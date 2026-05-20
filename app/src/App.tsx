@@ -24,16 +24,18 @@ import { AdminPanel } from '@/sections/AdminPanel';
 import { ScrollToTop } from '@/components/custom/ScrollToTop';
 import { Documentation } from '@/sections/Documentation';
 import { ApiReference } from '@/sections/ApiReference';
+import { ProblemWorkspace } from '@/sections/ProblemWorkspace';
 import { Toaster } from '@/components/ui/sonner';
 import { toast } from 'sonner';
 
-type View = 'home' | 'dashboard' | 'topic' | 'path' | 'problems' | 'notes' | 'leaderboard' | 'community' | 'daily-challenges' | 'admin' | 'docs' | 'api';
+type View = 'home' | 'dashboard' | 'topic' | 'path' | 'problems' | 'notes' | 'leaderboard' | 'community' | 'daily-challenges' | 'admin' | 'docs' | 'api' | 'workspace';
 
 function AppContent() {
   const { user, isLoading } = useAuth();
   const [currentView, setCurrentView] = useState<View>('home');
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
   const [selectedPathId, setSelectedPathId] = useState<string | null>(null);
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
 
@@ -50,6 +52,10 @@ function AppContent() {
           const topicId = hash.replace('topic/', '');
           setSelectedTopicId(topicId);
           setCurrentView('topic');
+        } else if (hash.startsWith('workspace/')) {
+          const wId = hash.replace('workspace/', '');
+          setSelectedWorkspaceId(wId);
+          setCurrentView('workspace');
         } else if (hash === 'dashboard') {
           if (user) {
             setCurrentView('dashboard');
@@ -166,6 +172,15 @@ function AppContent() {
         ) : (
           <Roadmaps onPathClick={handlePathClick} />
         );
+      case 'workspace':
+        return selectedWorkspaceId ? (
+          <ProblemWorkspace 
+            problemId={selectedWorkspaceId} 
+            onBack={() => handleNavigate('problems')} 
+          />
+        ) : (
+          <Problems />
+        );
       case 'problems':
         return <Problems />;
       case 'notes':
@@ -220,11 +235,13 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-[#141414]">
-      <Navigation
-        currentView={currentView}
-        onNavigate={handleNavigate}
-        onAuthClick={handleAuthClick}
-      />
+      {currentView !== 'workspace' && (
+        <Navigation
+          currentView={currentView}
+          onNavigate={handleNavigate}
+          onAuthClick={handleAuthClick}
+        />
+      )}
 
       <main>
         <AnimatePresence mode="wait">

@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import {
   Search,
   Play,
-  ExternalLink,
   Bookmark,
   CheckCircle2,
   Circle,
@@ -14,7 +13,8 @@ import {
   BarChart3,
   ChevronDown,
   X,
-  Save
+  Save,
+  Code2
 } from 'lucide-react';
 import { getAllProblems, getAllTopics } from '@/api/content';
 import { updateProblemStatus, toggleBookmark as apiToggleBookmark, getUserProgress, updateNotes } from '@/api/userActions';
@@ -386,17 +386,13 @@ export function Problems() {
                       </a>
                     )}
 
-                    {problem.problem_link && (
-                      <a
-                        href={problem.problem_link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-10 h-10 rounded-lg bg-white/5 hover:bg-[#63e3ff]/20 flex items-center justify-center transition-colors group"
-                        title="Open Problem"
-                      >
-                        <ExternalLink className="w-5 h-5 text-white/60 group-hover:text-[#63e3ff]" />
-                      </a>
-                    )}
+                    <button
+                      onClick={() => window.location.hash = `workspace/${problemMongoId}`}
+                      className="w-10 h-10 rounded-lg bg-[#a088ff]/10 hover:bg-[#a088ff]/20 flex items-center justify-center transition-colors group"
+                      title="Solve Problem"
+                    >
+                      <Code2 className="w-5 h-5 text-[#a088ff]" />
+                    </button>
 
                     <button
                       onClick={() => toggleBookmark(problem.id, problemMongoId)}
