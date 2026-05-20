@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
   Search,
@@ -23,10 +24,27 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 
 export function Problems() {
-  const { refreshProfile } = useAuth();
-  const [allProblems, setProblems] = useState<any[]>([]);
-  const [topics, setTopics] = useState<any[]>([]);
-  const [filtersLoading, setFiltersLoading] = useState(true);
+  const { data: problemsData = [], isLoading: problemsLoading } = useQuery({
+    queryKey: ['problems'],
+    queryFn: getAllProblems
+  });
+
+  const { data: topicsData = [], isLoading: topicsLoading } = useQuery({
+    queryKey: ['topics'],
+    queryFn: getAllTopics
+  });
+
+  const { user, refreshProfile } = useAuth();
+
+  const { data: userProgressData, isLoading: progressLoading } = useQuery({
+    queryKey: ['userProgress', user?.id],
+    queryFn: getUserProgress,
+    enabled: !!user,
+  });
+
+  const allProblems = problemsData;
+  const topics = topicsData;
+  const filtersLoading = problemsLoading || topicsLoading;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState<'all' | 'Easy' | 'Medium' | 'Hard'>('all');
@@ -41,44 +59,28 @@ export function Problems() {
   const [savingNote, setSavingNote] = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setFiltersLoading(true);
-        const [problemsData, topicsData] = await Promise.all([
-          getAllProblems(),
-          getAllTopics()
-        ]);
-        setProblems(problemsData);
-        setTopics(topicsData);
-
-        // Fetch user progress
-        const notesData: Record<string, string> = {};
-        try {
-          const progressData = await getUserProgress();
-          const completed = new Set<string>();
-          const bookmarked = new Set<string>();
-          progressData.forEach((p: any) => {
-            if (p.status === 'SOLVED') completed.add(p.problem_id);
-            if (p.is_bookmarked) bookmarked.add(p.problem_id);
-            if (p.notes && p.notes.trim()) {
-              notesData[p.problem_id] = p.notes;
-            }
-          });
-          setCompletedProblems(completed);
-          setBookmarkedProblems(bookmarked);
-          setNotesMap(notesData);
-        } catch (err) {
-          // Ignore if not logged in
+    if (userProgressData) {
+      const completed = new Set<string>();
+      const bookmarked = new Set<string>();
+      const notesData: Record<string, string> = {};
+      
+      userProgressData.forEach((p: any) => {
+        if (p.status === 'SOLVED') completed.add(p.problem_id);
+        if (p.is_bookmarked) bookmarked.add(p.problem_id);
+        if (p.notes && p.notes.trim()) {
+          notesData[p.problem_id] = p.notes;
         }
-      } catch (e) {
-        console.error(e);
-        toast.error("Failed to load problems");
-      } finally {
-        setFiltersLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+      });
+      
+      setCompletedProblems(completed);
+      setBookmarkedProblems(bookmarked);
+      setNotesMap(notesData);
+    } else if (!user) {
+      setCompletedProblems(new Set());
+      setBookmarkedProblems(new Set());
+      setNotesMap({});
+    }
+  }, [userProgressData, user]);
 
   // Get all unique tags
   const allTags = useMemo(() => {

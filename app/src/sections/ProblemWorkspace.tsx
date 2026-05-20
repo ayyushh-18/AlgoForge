@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ArrowLeft, Play, CheckCircle2, ChevronDown, Moon, Sun, Monitor } from 'lucide-react';
 import Editor from '@monaco-editor/react';
 import { getProblemById, executeCode } from '@/api/content';
+import { updateProblemStatus } from '@/api/userActions';
 import { toast } from 'sonner';
 
 interface ProblemWorkspaceProps {
@@ -23,7 +24,7 @@ export function ProblemWorkspace({ problemId, onBack }: ProblemWorkspaceProps) {
   const [language, setLanguage] = useState<string>('javascript');
   const [theme, setTheme] = useState<'vs-dark' | 'light'>('vs-dark');
   const [fontSize, setFontSize] = useState<number>(14);
-  const [output, setOutput] = useState<string>('Execute code to see output here.');
+  const [executionResult, setExecutionResult] = useState<any>(null);
   const [isExecuting, setIsExecuting] = useState(false);
 
   useEffect(() => {
@@ -71,26 +72,32 @@ export function ProblemWorkspace({ problemId, onBack }: ProblemWorkspaceProps) {
     }
     
     setIsExecuting(true);
-    setOutput('Running...');
+    setExecutionResult({ status: 'Running...' });
     
     try {
       const result = await executeCode(problemId, code, language);
-      if (result.error && !result.stdout) {
-        setOutput(`Error:\n${result.error}`);
-      } else {
-        setOutput(result.output || 'Code executed successfully with no output.');
-      }
+      setExecutionResult(result);
+      return result;
     } catch (error: any) {
-      setOutput(`Execution failed: ${error.message || 'Server error'}`);
+      const errRes = { error: `Execution failed: ${error.message || 'Server error'}` };
+      setExecutionResult(errRes);
       toast.error('Failed to execute code');
+      return errRes;
     } finally {
       setIsExecuting(false);
     }
   };
 
   const handleSubmit = async () => {
-    toast.info('Full submission logic with test cases will be implemented next');
-    await handleRunCode();
+    const res = await handleRunCode();
+    if (res?.success && res?.allPassed) {
+      toast.success('All test cases passed! (Submission saved)');
+      try {
+        await updateProblemStatus(problemId, 'SOLVED');
+      } catch (err) {
+        // silently fail if not logged in or other issues
+      }
+    }
   };
 
   if (loading) {
@@ -248,7 +255,37 @@ export function ProblemWorkspace({ problemId, onBack }: ProblemWorkspaceProps) {
               <span className="text-white/80 text-sm font-medium">Console Output</span>
             </div>
             <div className="flex-1 overflow-y-auto p-4 font-mono text-sm text-white/60 whitespace-pre-wrap">
-              {output}
+              {!executionResult && 'Execute code to see output here.'}
+              {executionResult?.status && executionResult.status}
+              {executionResult?.error && <span className="text-red-400">{executionResult.error}</span>}
+              {executionResult?.success && (
+                <div className="space-y-4">
+                  <div className={`text-lg font-bold ${executionResult.allPassed ? 'text-green-400' : 'text-red-400'}`}>
+                    {executionResult.allPassed ? 'All Test Cases Passed!' : 'Some Test Cases Failed'}
+                  </div>
+                  {executionResult.results.map((res: any, idx: number) => (
+                    <div key={idx} className="bg-white/5 p-3 rounded-lg border border-white/10">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-semibold text-white/80">Test Case {idx + 1}</span>
+                        <span className={`px-2 py-0.5 rounded text-xs ${res.passed ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                          {res.passed ? 'Passed' : 'Failed'}
+                        </span>
+                      </div>
+                      {!res.isHidden && (
+                        <div className="space-y-2 text-xs">
+                          <div><span className="text-white/40">Input:</span> <span className="text-white/80">{res.input}</span></div>
+                          <div><span className="text-white/40">Expected:</span> <span className="text-white/80">{res.expectedOutput}</span></div>
+                          <div><span className="text-white/40">Actual:</span> <span className={res.passed ? 'text-green-400' : 'text-red-400'}>{res.stdout || res.output}</span></div>
+                          {res.error && <div><span className="text-red-400">Error: {res.error}</span></div>}
+                        </div>
+                      )}
+                      {res.isHidden && (
+                        <div className="text-xs text-white/40 italic">Hidden test case</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

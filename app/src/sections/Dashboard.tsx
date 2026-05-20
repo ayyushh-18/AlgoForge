@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Flame,
@@ -65,44 +66,37 @@ function timeAgo(dateStr: string): string {
 
 export function Dashboard({ onNavigate }: DashboardProps) {
   const { profile } = useAuth();
-
-  const [problems, setProblems] = useState<any[]>([]);
-  const [topics, setTopics] = useState<any[]>([]);
-  const [userProgress, setUserProgress] = useState<any[]>([]);
-  const [dashboardStats, setDashboardStats] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  
   const [hoveredDay, setHoveredDay] = useState<number | null>(null);
   const [hoveredDonut, setHoveredDonut] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const [problemsData, topicsData] = await Promise.all([
-          getAllProblems(),
-          getAllTopics()
-        ]);
-        setProblems(problemsData);
-        setTopics(topicsData);
+  const { data: problemsData = [], isLoading: problemsLoading } = useQuery({
+    queryKey: ['problems'],
+    queryFn: getAllProblems
+  });
 
-        try {
-          const [progress, stats] = await Promise.all([
-            getUserProgress(),
-            getDashboardStats()
-          ]);
-          setUserProgress(progress);
-          setDashboardStats(stats);
-        } catch (e) {
-          console.log("Failed to load user-specific data");
-        }
-      } catch (e) {
-        console.error("Failed to load dashboard data", e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+  const { data: topicsData = [], isLoading: topicsLoading } = useQuery({
+    queryKey: ['topics'],
+    queryFn: getAllTopics
+  });
+
+  const { data: userProgressData = [], isLoading: progressLoading } = useQuery({
+    queryKey: ['userProgress', profile?.id],
+    queryFn: getUserProgress,
+    enabled: !!profile,
+  });
+
+  const { data: dashboardStatsData, isLoading: statsLoading } = useQuery({
+    queryKey: ['dashboardStats', profile?.id],
+    queryFn: getDashboardStats,
+    enabled: !!profile,
+  });
+
+  const problems = problemsData;
+  const topics = topicsData;
+  const userProgress = userProgressData;
+  const dashboardStats = dashboardStatsData;
+  const loading = problemsLoading || topicsLoading || progressLoading || statsLoading;
 
   const stats = useMemo(() => {
     const solvedProgress = userProgress.filter((p: any) => p.status === 'SOLVED');

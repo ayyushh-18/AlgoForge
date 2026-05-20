@@ -154,37 +154,68 @@ export const executeCode = async (req: Request, res: Response) => {
         };
 
         const version = PISTON_LANGUAGES[language] || '*';
-
-        // Call Piston API for code execution
-        const response = await fetch('https://emkc.org/api/v2/piston/execute', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                language,
-                version,
-                files: [
-                    { content: code }
-                ],
-                stdin: "", // Can be modified for test case inputs
-                args: [],
-                compile_timeout: 10000,
-                run_timeout: 3000,
-                compile_memory_limit: -1,
-                run_memory_limit: -1
-            })
-        });
-
-        const data = await response.json();
         
-        // Return Piston's run result
+        // If no test cases exist, just run the code with empty stdin
+        const testCases = problem.testCases && problem.testCases.length > 0 
+            ? problem.testCases 
+            : [{ input: '', expectedOutput: '', isHidden: false }];
+
+        const results = await Promise.all(testCases.map(async (testCase) => {
+            const response = await fetch('https://emkc.org/api/v2/piston/execute', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    language,
+                    version,
+                    files: [
+                        { content: code }
+                    ],
+                    stdin: testCase.input,
+                    args: [],
+                    compile_timeout: 10000,
+                    run_timeout: 3000,
+                    compile_memory_limit: -1,
+                    run_memory_limit: -1
+                })
+            });
+
+            const data = await response.json();
+            const output = data.run?.output || data.message || 'No output';
+            const stdout = data.run?.stdout || '';
+            const stderr = data.run?.stderr || '';
+            const error = data.compile?.stderr || data.run?.stderr || '';
+            const isError = data.run?.signal ? true : data.run?.code !== 0;
+            
+            let passed = false;
+            if (!isError) {
+                // Trim trailing whitespaces/newlines for comparison
+                const actual = stdout.trim();
+                const expected = testCase.expectedOutput.trim();
+                passed = actual === expected;
+            }
+
+            return {
+                input: testCase.isHidden ? 'Hidden Test Case' : testCase.input,
+                expectedOutput: testCase.isHidden ? 'Hidden' : testCase.expectedOutput,
+                output: testCase.isHidden ? (passed ? 'Hidden' : 'Hidden Test Case Failed') : output,
+                stdout: testCase.isHidden ? 'Hidden' : stdout,
+                stderr: testCase.isHidden ? (error ? 'Hidden Error' : '') : stderr,
+                error: testCase.isHidden ? (error ? 'Hidden Error' : '') : error,
+                passed,
+                isError,
+                executionTime: data.run?.signal ? 'Timeout' : data.run?.code === 0 ? 'Success' : 'Error',
+                isHidden: testCase.isHidden
+            };
+        }));
+
+        const allPassed = results.every(r => r.passed);
+
         res.json({
-            output: data.run?.output || data.message || 'No output',
-            stdout: data.run?.stdout,
-            stderr: data.run?.stderr,
-            error: data.compile?.stderr || data.run?.stderr,
-            executionTime: data.run?.signal ? 'Timeout' : data.run?.code === 0 ? 'Success' : 'Error'
+            success: true,
+            allPassed,
+            results
         });
 
     } catch (error) {
