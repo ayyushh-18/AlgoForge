@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import Problem from '../models/Problem';
-import Topic from '../models/Topic';
+import { prisma } from '../config/db';
 
 const SYSTEM_PROMPT = `You are AlgoBot, a friendly and expert AI tutor for Data Structures & Algorithms on the AlgoForge platform.
 
@@ -33,18 +32,22 @@ export const chat = async (req: Request, res: Response) => {
         const genAI = new GoogleGenerativeAI(apiKey);
 
         // Fetch problems and build catalog
-        const problems = await Problem.find({}, 'title topic_id difficulty tags problem_link').lean();
-        const topics = await Topic.find({}, 'id title').lean();
-        const topicMap = new Map(topics.map(t => [t.id, t.title]));
+        const problems = await prisma.problem.findMany({
+            select: { title: true, topic_slug: true, difficulty: true, problem_link: true }
+        });
+        const topics = await prisma.topic.findMany({
+            select: { slug: true, title: true }
+        });
+        const topicMap = new Map(topics.map(t => [t.slug, t.title]));
 
         const catalogLines = problems.map(p => {
-            const topicName = topicMap.get(p.topic_id) || p.topic_id;
+            const topicName = topicMap.get(p.topic_slug) || p.topic_slug;
             return `- ${p.title} | ${topicName} | ${p.difficulty} | Link: ${p.problem_link}`;
         });
 
         const fullSystemPrompt = `${SYSTEM_PROMPT}\n\n## PROBLEM CATALOG:\n${catalogLines.join('\n')}`;
 
-        // gemini-2.5-flash — confirmed working with free tier
+        // gemini-2.5-flash
         const model = genAI.getGenerativeModel({
             model: 'gemini-2.5-flash',
             systemInstruction: fullSystemPrompt,
@@ -66,10 +69,8 @@ export const chat = async (req: Request, res: Response) => {
         res.json({ reply: response });
     } catch (error: any) {
         console.error('Gemini Chat Error:', error);
-        // Clean up error message for frontend
+        
         const detailedError = error.message || error.toString();
-
-        // Check for common issues
         let userMessage = 'Failed to get AI response';
         if (detailedError.includes('API key')) userMessage = 'Invalid API Key';
         if (detailedError.includes('quota')) userMessage = 'Rate limit exceeded';
@@ -77,7 +78,7 @@ export const chat = async (req: Request, res: Response) => {
 
         res.status(500).json({
             error: userMessage,
-            details: detailedError // Send full details for debugging
+            details: detailedError
         });
     }
 };

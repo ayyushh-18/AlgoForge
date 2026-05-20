@@ -1,16 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import User from '../models/User';
+import { prisma } from '../config/db';
 
 interface JwtPayload {
     id: string;
 }
 
-// Extend Request interface to include user
 declare global {
     namespace Express {
         interface Request {
-            user?: any; // Replace 'any' with your User type
+            user?: any;
         }
     }
 }
@@ -23,14 +22,22 @@ const protect = async (req: Request, res: Response, next: NextFunction) => {
         req.headers.authorization.startsWith('Bearer')
     ) {
         try {
-            // Get token from header
             token = req.headers.authorization.split(' ')[1];
 
-            // Verify token
             const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret') as JwtPayload;
 
-            // Get user from the token
-            req.user = await User.findById(decoded.id).select('-password');
+            const user = await prisma.user.findUnique({
+                where: { id: decoded.id },
+            });
+
+            if (!user) {
+                res.status(401).json({ message: 'User not found' });
+                return;
+            }
+
+            // Exclude password
+            const { password, ...userWithoutPassword } = user;
+            req.user = userWithoutPassword;
 
             if (req.user?.isBanned) {
                 res.status(403).json({ message: 'Your account has been suspended' });

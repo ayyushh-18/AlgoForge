@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
-import ForumPost from '../models/ForumPost';
+import { prisma } from '../config/db';
 
-// GET /api/forum — List posts with pagination, category filter, sort
 export const getPosts = async (req: Request, res: Response) => {
     try {
         const {
@@ -27,13 +26,20 @@ export const getPosts = async (req: Request, res: Response) => {
         const limitNum = parseInt(limit as string, 10);
         const skip = (pageNum - 1) * limitNum;
 
-        // Use aggregation for computed sort fields
         const pipeline: any[] = [
             { $match: filter },
             {
+                $lookup: {
+                    from: "Reply",
+                    localField: "_id",
+                    foreignField: "postId",
+                    as: "replies"
+                }
+            },
+            {
                 $addFields: {
-                    likesCount: { $size: '$likes' },
-                    repliesCount: { $size: '$replies' }
+                    likesCount: { $size: { $ifNull: ["$likes", []] } },
+                    repliesCount: { $size: { $ifNull: ["$replies", []] } }
                 }
             },
             { $sort: sortOption },
@@ -41,17 +47,18 @@ export const getPosts = async (req: Request, res: Response) => {
             { $limit: limitNum },
             {
                 $lookup: {
-                    from: 'users',
-                    localField: 'author',
-                    foreignField: '_id',
-                    as: 'authorInfo'
+                    from: "User",
+                    localField: "authorId",
+                    foreignField: "_id",
+                    as: "authorInfo"
                 }
             },
-            { $unwind: '$authorInfo' },
+            { $unwind: { path: "$authorInfo", preserveNullAndEmptyArrays: true } },
             {
                 $project: {
+                    id: { $toString: "$_id" },
                     title: 1,
-                    content: { $substr: ['$content', 0, 200] }, // snippet
+                    content: { $substrCP: ["$content", 0, 200] },
                     category: 1,
                     tags: 1,
                     likes: 1,
@@ -60,18 +67,37 @@ export const getPosts = async (req: Request, res: Response) => {
                     isPinned: 1,
                     createdAt: 1,
                     updatedAt: 1,
-                    'authorInfo.name': 1,
-                    'authorInfo._id': 1,
-                    'authorInfo.avatar': 1
+                    author: {
+                        _id: { $toString: "$authorInfo._id" },
+                        name: "$authorInfo.name",
+                        avatar: "$authorInfo.avatar"
+                    }
                 }
             }
         ];
 
-        const posts = await ForumPost.aggregate(pipeline);
-        const total = await ForumPost.countDocuments(filter);
+        const posts = await prisma.forumPost.aggregateRaw({ pipeline }) as unknown as any[];
+        
+        // Format the output
+        const formattedPosts = posts.map(p => ({
+            _id: p._id?.$oid || p._id,
+            title: p.title,
+            content: p.content,
+            category: p.category,
+            tags: p.tags,
+            likes: p.likes || [],
+            likesCount: p.likesCount,
+            repliesCount: p.repliesCount,
+            isPinned: p.isPinned,
+            createdAt: p.createdAt?.$date || p.createdAt,
+            updatedAt: p.updatedAt?.$date || p.updatedAt,
+            author: p.author
+        }));
+
+        const total = await prisma.forumPost.count({ where: filter });
 
         res.json({
-            posts,
+            posts: formattedPosts,
             totalPages: Math.ceil(total / limitNum),
             currentPage: pageNum,
             total
@@ -82,25 +108,41 @@ export const getPosts = async (req: Request, res: Response) => {
     }
 };
 
-// GET /api/forum/:id — Get single post with populated replies
 export const getPost = async (req: Request, res: Response) => {
     try {
-        const post = await ForumPost.findById(req.params.id)
-            .populate('author', 'name avatar _id')
-            .populate('replies.author', 'name avatar _id');
+        const post = await prisma.forumPost.findUnique({
+            where: { id: req.params.id },
+            include: {
+                author: { select: { id: true, name: true, avatar: true } },
+                replies: {
+                    include: { author: { select: { id: true, name: true, avatar: true } } }
+                }
+            }
+        });
 
         if (!post) {
             return res.status(404).json({ message: 'Post not found' });
         }
 
-        res.json(post);
+        // Map id to _id for frontend compatibility
+        const mappedPost = {
+            ...post,
+            _id: post.id,
+            author: { ...post.author, _id: post.author.id },
+            replies: post.replies.map(r => ({
+                ...r,
+                _id: r.id,
+                author: { ...r.author, _id: r.author.id }
+            }))
+        };
+
+        res.json(mappedPost);
     } catch (error) {
         console.error('Error fetching post:', error);
         res.status(500).json({ message: 'Failed to fetch post' });
     }
 };
 
-// POST /api/forum — Create new post (auth required)
 export const createPost = async (req: Request, res: Response) => {
     try {
         const { title, content, category, tags } = req.body;
@@ -109,23 +151,30 @@ export const createPost = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Title and content are required' });
         }
 
-        const post = await ForumPost.create({
-            title,
-            content,
-            category: category || 'general',
-            tags: tags || [],
-            author: req.user._id
+        const post = await prisma.forumPost.create({
+            data: {
+                title,
+                content,
+                category: category || 'general',
+                tags: tags || [],
+                authorId: req.user.id
+            },
+            include: { author: { select: { id: true, name: true, avatar: true } } }
         });
 
-        const populated = await post.populate('author', 'name avatar _id');
-        res.status(201).json(populated);
+        const mappedPost = {
+            ...post,
+            _id: post.id,
+            author: { ...post.author, _id: post.author.id }
+        };
+
+        res.status(201).json(mappedPost);
     } catch (error) {
         console.error('Error creating post:', error);
         res.status(500).json({ message: 'Failed to create post' });
     }
 };
 
-// POST /api/forum/:id/reply — Add reply (auth required)
 export const addReply = async (req: Request, res: Response) => {
     try {
         const { content } = req.body;
@@ -134,79 +183,97 @@ export const addReply = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Reply content is required' });
         }
 
-        const post = await ForumPost.findById(req.params.id);
+        const post = await prisma.forumPost.findUnique({ where: { id: req.params.id } });
         if (!post) {
             return res.status(404).json({ message: 'Post not found' });
         }
 
-        post.replies.push({
-            content,
-            author: req.user._id,
-            likes: []
+        await prisma.reply.create({
+            data: {
+                content,
+                postId: req.params.id,
+                authorId: req.user.id
+            }
         });
 
-        await post.save();
+        const updatedPost = await prisma.forumPost.findUnique({
+            where: { id: req.params.id },
+            include: {
+                author: { select: { id: true, name: true, avatar: true } },
+                replies: { include: { author: { select: { id: true, name: true, avatar: true } } } }
+            }
+        });
 
-        const updated = await ForumPost.findById(req.params.id)
-            .populate('author', 'name avatar _id')
-            .populate('replies.author', 'name avatar _id');
+        const mappedPost = {
+            ...updatedPost,
+            _id: updatedPost!.id,
+            author: { ...updatedPost!.author, _id: updatedPost!.author.id },
+            replies: updatedPost!.replies.map(r => ({
+                ...r,
+                _id: r.id,
+                author: { ...r.author, _id: r.author.id }
+            }))
+        };
 
-        res.status(201).json(updated);
+        res.status(201).json(mappedPost);
     } catch (error) {
         console.error('Error adding reply:', error);
         res.status(500).json({ message: 'Failed to add reply' });
     }
 };
 
-// POST /api/forum/:id/like — Toggle like on post (auth required)
 export const toggleLike = async (req: Request, res: Response) => {
     try {
-        const post = await ForumPost.findById(req.params.id);
+        const post = await prisma.forumPost.findUnique({ where: { id: req.params.id } });
         if (!post) {
             return res.status(404).json({ message: 'Post not found' });
         }
 
-        const userId = req.user._id.toString();
-        const likeIndex = post.likes.findIndex((id: any) => id.toString() === userId);
+        const userId = req.user.id;
+        const likeIndex = post.likes.indexOf(userId);
 
+        let updatedLikes = [...post.likes];
         if (likeIndex > -1) {
-            post.likes.splice(likeIndex, 1);
+            updatedLikes.splice(likeIndex, 1);
         } else {
-            post.likes.push(req.user._id);
+            updatedLikes.push(userId);
         }
 
-        await post.save();
-        res.json({ likes: post.likes, liked: likeIndex === -1 });
+        await prisma.forumPost.update({
+            where: { id: req.params.id },
+            data: { likes: updatedLikes }
+        });
+
+        res.json({ likes: updatedLikes, liked: likeIndex === -1 });
     } catch (error) {
         console.error('Error toggling like:', error);
         res.status(500).json({ message: 'Failed to toggle like' });
     }
 };
 
-// POST /api/forum/:id/replies/:replyId/like — Toggle like on reply (auth required)
 export const toggleReplyLike = async (req: Request, res: Response) => {
     try {
-        const post = await ForumPost.findById(req.params.id);
-        if (!post) {
-            return res.status(404).json({ message: 'Post not found' });
-        }
-
-        const reply = post.replies.id(req.params.replyId);
+        const reply = await prisma.reply.findUnique({ where: { id: req.params.replyId } });
         if (!reply) {
             return res.status(404).json({ message: 'Reply not found' });
         }
 
-        const userId = req.user._id.toString();
-        const likeIndex = reply.likes.findIndex((id: any) => id.toString() === userId);
+        const userId = req.user.id;
+        const likeIndex = reply.likes.indexOf(userId);
 
+        let updatedLikes = [...reply.likes];
         if (likeIndex > -1) {
-            reply.likes.splice(likeIndex, 1);
+            updatedLikes.splice(likeIndex, 1);
         } else {
-            reply.likes.push(req.user._id);
+            updatedLikes.push(userId);
         }
 
-        await post.save();
-        res.json({ likes: reply.likes, liked: likeIndex === -1 });
+        await prisma.reply.update({
+            where: { id: req.params.replyId },
+            data: { likes: updatedLikes }
+        });
+
+        res.json({ likes: updatedLikes, liked: likeIndex === -1 });
     } catch (error) {
         console.error('Error toggling reply like:', error);
         res.status(500).json({ message: 'Failed to toggle reply like' });

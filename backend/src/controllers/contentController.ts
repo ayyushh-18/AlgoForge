@@ -1,20 +1,26 @@
 import { Request, Response } from 'express';
-import LearningPath from '../models/LearningPath';
-import Topic from '../models/Topic';
-import Problem from '../models/Problem';
+import { prisma } from '../config/db';
 
 // @desc    Get all learning paths
 // @route   GET /api/content/paths
 // @access  Public
 export const getLearningPaths = async (req: Request, res: Response) => {
     try {
-        const paths = await LearningPath.find().sort({ order_index: 1 }).lean();
+        const paths = await prisma.learningPath.findMany({
+            orderBy: { order_index: 'asc' }
+        });
 
         const pathsWithCounts = await Promise.all(paths.map(async (path: any) => {
-            const topics = await Topic.find({ path_id: path.id }).select('id');
-            const topicIds = topics.map(t => t.id);
-            const totalProblems = await Problem.countDocuments({ topic_id: { $in: topicIds } });
-            return { ...path, totalProblems };
+            const topics = await prisma.topic.findMany({
+                where: { path_slug: path.slug },
+                select: { slug: true }
+            });
+            const topicSlugs = topics.map(t => t.slug);
+            const totalProblems = await prisma.problem.count({
+                where: { topic_slug: { in: topicSlugs } }
+            });
+            // Map slug back to id for frontend compatibility
+            return { ...path, id: path.slug, totalProblems };
         }));
 
         res.json(pathsWithCounts);
@@ -29,8 +35,12 @@ export const getLearningPaths = async (req: Request, res: Response) => {
 export const getTopicsByPath = async (req: Request, res: Response) => {
     try {
         const { pathId } = req.params;
-        const topics = await Topic.find({ path_id: pathId }).sort({ order_index: 1 });
-        res.json(topics);
+        const topics = await prisma.topic.findMany({
+            where: { path_slug: pathId },
+            orderBy: { order_index: 'asc' }
+        });
+        
+        res.json(topics.map(t => ({ ...t, id: t.slug })));
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });
     }
@@ -42,11 +52,13 @@ export const getTopicsByPath = async (req: Request, res: Response) => {
 export const getTopicById = async (req: Request, res: Response) => {
     try {
         const { topicId } = req.params;
-        const topic = await Topic.findOne({ id: topicId });
+        const topic = await prisma.topic.findUnique({
+            where: { slug: topicId }
+        });
         if (!topic) {
             return res.status(404).json({ message: 'Topic not found' });
         }
-        res.json(topic);
+        res.json({ ...topic, id: topic.slug });
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });
     }
@@ -57,8 +69,10 @@ export const getTopicById = async (req: Request, res: Response) => {
 // @access  Public
 export const getAllTopics = async (req: Request, res: Response) => {
     try {
-        const topics = await Topic.find().sort({ order_index: 1 });
-        res.json(topics);
+        const topics = await prisma.topic.findMany({
+            orderBy: { order_index: 'asc' }
+        });
+        res.json(topics.map(t => ({ ...t, id: t.slug })));
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });
     }
@@ -70,7 +84,10 @@ export const getAllTopics = async (req: Request, res: Response) => {
 export const getProblemsByTopic = async (req: Request, res: Response) => {
     try {
         const { topicId } = req.params;
-        const problems = await Problem.find({ topic_id: topicId }).sort({ order_index: 1 });
+        const problems = await prisma.problem.findMany({
+            where: { topic_slug: topicId },
+            orderBy: { order_index: 'asc' }
+        });
         res.json(problems);
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });
@@ -82,7 +99,9 @@ export const getProblemsByTopic = async (req: Request, res: Response) => {
 // @access  Public
 export const getAllProblems = async (req: Request, res: Response) => {
     try {
-        const problems = await Problem.find().sort({ order_index: 1 });
+        const problems = await prisma.problem.findMany({
+            orderBy: { order_index: 'asc' }
+        });
         res.json(problems);
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });

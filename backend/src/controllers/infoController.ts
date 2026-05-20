@@ -1,20 +1,17 @@
 import { Request, Response } from 'express';
-import User from '../models/User';
-import Problem from '../models/Problem';
-import LearningPath from '../models/LearningPath';
+import { prisma } from '../config/db';
 
-// @desc    Get system stats
-// @route   GET /api/info/stats
-// @access  Public
 export const getStats = async (req: Request, res: Response) => {
     try {
-        const userCount = await User.countDocuments({});
-        const problemCount = await Problem.countDocuments({});
-        const roadmapCount = await LearningPath.countDocuments({});
+        const userCount = await prisma.user.count();
+        const problemCount = await prisma.problem.count();
+        const roadmapCount = await prisma.learningPath.count();
 
-        // Count problems with video links
-        const videoCount = await Problem.countDocuments({
-            video_link: { $exists: true, $ne: null }
+        // Count problems with video links (where video_link is neither null nor empty string)
+        const videoCount = await prisma.problem.count({
+            where: {
+                video_link: { not: null, notIn: [""] }
+            }
         });
 
         res.status(200).json({

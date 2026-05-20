@@ -1,7 +1,10 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import User from '../models/User';
+import { prisma } from '../config/db';
+import { OAuth2Client } from 'google-auth-library';
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // Generate JWT
 const generateToken = (id: string) => {
@@ -21,19 +24,22 @@ export const registerUser = async (req: Request, res: Response) => {
         return;
     }
 
-    // Check if user exists
-    const userExists = await User.findOne({ email });
+    const userExists = await prisma.user.findUnique({ where: { email } });
 
     if (userExists) {
         res.status(400).json({ message: 'User already exists' });
         return;
     }
 
-    // Create user
-    const user = await User.create({
-        name,
-        email,
-        password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const user = await prisma.user.create({
+        data: {
+            name,
+            email,
+            password: hashedPassword
+        }
     });
 
     if (user) {
@@ -60,10 +66,9 @@ export const registerUser = async (req: Request, res: Response) => {
 export const loginUser = async (req: Request, res: Response) => {
     const { email, password } = req.body;
 
-    // Check for user email
-    const user: any = await User.findOne({ email });
+    const user = await prisma.user.findUnique({ where: { email } });
 
-    if (user && (await user.matchPassword(password))) {
+    if (user && user.password && (await bcrypt.compare(password, user.password))) {
         if (user.isBanned) {
             res.status(403).json({ message: 'Your account has been suspended' });
             return;
@@ -88,9 +93,6 @@ export const loginUser = async (req: Request, res: Response) => {
 // @desc    Google Auth
 // @route   POST /api/users/google
 // @access  Public
-import { OAuth2Client } from 'google-auth-library';
-const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-
 export const googleAuth = async (req: Request, res: Response) => {
     const { token } = req.body;
 
@@ -102,31 +104,33 @@ export const googleAuth = async (req: Request, res: Response) => {
 
         const payload = ticket.getPayload();
 
-        if (!payload) {
+        if (!payload || !payload.email) {
             res.status(400).json({ message: 'Invalid Google Token' });
             return;
         }
 
         const { email, name, sub: googleId, picture: avatar } = payload;
 
-        let user: any = await User.findOne({ email });
+        let user = await prisma.user.findUnique({ where: { email } });
         let isNewUser = false;
 
         if (user) {
-            // User exists, update googleId if not present
             if (!user.googleId) {
-                user.googleId = googleId;
-                await user.save();
+                user = await prisma.user.update({
+                    where: { id: user.id },
+                    data: { googleId }
+                });
             }
         } else {
-            // Create new user
             isNewUser = true;
-            user = await User.create({
-                name,
-                email,
-                googleId,
-                avatar,
-                password: '' // No password for Google users
+            user = await prisma.user.create({
+                data: {
+                    name: name || 'Google User',
+                    email,
+                    googleId,
+                    avatar,
+                    password: ''
+                }
             });
         }
 
