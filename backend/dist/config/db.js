@@ -12,15 +12,16 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const mongoose_1 = __importDefault(require("mongoose"));
+exports.prisma = void 0;
+const client_1 = require("@prisma/client");
+const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config();
+const prisma = new client_1.PrismaClient();
+exports.prisma = prisma;
 const connectDB = () => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const uri = process.env.MONGO_URI;
-        if (!uri || uri.includes('cluster0.example.mongodb.net') || uri.includes('<username>')) {
-            throw new Error('Please update MONGO_URI in backend/.env with your actual MongoDB connection string.');
-        }
-        const conn = yield mongoose_1.default.connect(uri);
-        console.log(`MongoDB Connected: ${conn.connection.host}`);
+        yield prisma.$connect();
+        console.log('MongoDB Connected via Prisma');
     }
     catch (error) {
         console.error(`Error: ${error.message}`);

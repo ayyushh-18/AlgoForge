@@ -12,15 +12,31 @@ const app = (0, express_1.default)();
 const port = process.env.PORT || 5000;
 // Middleware
 app.use((0, cors_1.default)({
-    origin: 'http://localhost:5173', // Vite default port
-    credentials: true
+    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express_1.default.json());
 // Database Connection
 (0, db_1.default)();
 // Routes
 const authRoutes_1 = __importDefault(require("./routes/authRoutes"));
+const userRoutes_1 = __importDefault(require("./routes/userRoutes"));
 app.use('/api/users', authRoutes_1.default);
+app.use('/api/users', userRoutes_1.default);
+const infoRoutes_1 = __importDefault(require("./routes/infoRoutes"));
+const contentRoutes_1 = __importDefault(require("./routes/contentRoutes"));
+const userActionRoutes_1 = __importDefault(require("./routes/userActionRoutes"));
+const chatRoutes_1 = __importDefault(require("./routes/chatRoutes"));
+const forumRoutes_1 = __importDefault(require("./routes/forumRoutes"));
+const adminRoutes_1 = __importDefault(require("./routes/adminRoutes"));
+app.use('/api/info', infoRoutes_1.default);
+app.use('/api/content', contentRoutes_1.default);
+app.use('/api/user-actions', userActionRoutes_1.default);
+app.use('/api/chat', chatRoutes_1.default);
+app.use('/api/forum', forumRoutes_1.default);
+app.use('/api/admin', adminRoutes_1.default);
 app.get('/', (req, res) => {
     res.send('AlgoForge API is running');
 });
