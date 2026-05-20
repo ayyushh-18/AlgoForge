@@ -36,7 +36,7 @@ export function Problems() {
 
   const { user, refreshProfile } = useAuth();
 
-  const { data: userProgressData, isLoading: progressLoading } = useQuery({
+  const { data: userProgressData } = useQuery({
     queryKey: ['userProgress', user?.id],
     queryFn: getUserProgress,
     enabled: !!user,
@@ -85,7 +85,7 @@ export function Problems() {
   // Get all unique tags
   const allTags = useMemo(() => {
     const tags = new Set<string>();
-    allProblems.forEach(p => {
+    allProblems.forEach((p: any) => {
       if (p.tags) p.tags.forEach((t: string) => tags.add(t));
     });
     return Array.from(tags).sort();
@@ -93,7 +93,7 @@ export function Problems() {
 
   // Filter problems
   const filteredProblems = useMemo(() => {
-    return allProblems.filter(problem => {
+    return allProblems.filter((problem: any) => {
       const tags = problem.tags || [];
       const matchesSearch = problem.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         tags.some((tag: string) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -106,9 +106,9 @@ export function Problems() {
   // Stats
   const stats = {
     total: allProblems.length,
-    easy: allProblems.filter(p => p.difficulty === 'Easy').length,
-    medium: allProblems.filter(p => p.difficulty === 'Medium').length,
-    hard: allProblems.filter(p => p.difficulty === 'Hard').length,
+    easy: allProblems.filter((p: any) => p.difficulty === 'Easy').length,
+    medium: allProblems.filter((p: any) => p.difficulty === 'Medium').length,
+    hard: allProblems.filter((p: any) => p.difficulty === 'Hard').length,
   };
 
   const toggleComplete = async (_problemId: string, problemMongoId: string) => {
@@ -316,7 +316,7 @@ export function Problems() {
             const problemMongoId = problem._id;
             const isCompleted = completedProblems.has(problemMongoId);
             const isBookmarked = bookmarkedProblems.has(problemMongoId);
-            const topic = topics.find(t => t.id === problem.topic_id);
+            const topic = topics.find((t: any) => t.id === problem.topic_id);
 
             return (
               <motion.div
