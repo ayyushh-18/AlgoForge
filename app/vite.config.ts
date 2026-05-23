@@ -12,4 +12,10 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  define: {
+    // Bake the production URL into the build if the env var is not set
+    'import.meta.env.VITE_API_BASE_URL': JSON.stringify(
+      process.env.VITE_API_BASE_URL || 'https://algoforge-2-0.onrender.com'
+    ),
+  },
 });
