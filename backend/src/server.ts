@@ -18,7 +18,7 @@ const allowedOrigins = [
 ].filter(Boolean) as string[];
 
 app.use(cors({
-    origin: (origin, callback) => {
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
         // allow server-to-server (no origin) or listed origins
         if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true);
