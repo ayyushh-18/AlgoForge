@@ -5,6 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AlgoForge</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    
+    <!-- Preconnect to domains -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="dns-prefetch" href="https://algoforge-2-0.onrender.com">
+
+    <!-- Load Google Fonts asynchronously via link tags instead of blocking CSS @import -->
+    <link href="https://fonts.googleapis.com/css2?family=Jersey+15&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Minimal inline skeleton CSS to prevent white flash before index.css loads -->
+    <style>
+      body, html {
+        margin: 0;
+        padding: 0;
+        background-color: #141414; /* var(--background) */
+        color: #ffffff;
+      }
+      #root {
+        min-height: 100vh;
+        background-color: #141414;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

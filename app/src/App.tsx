@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Navigation } from '@/components/custom/Navigation';
-import { PathDetail } from '@/sections/PathDetail';
 import { Hero } from '@/sections/Hero';
 import { UserHero } from '@/sections/UserHero';
 import { Roadmaps } from '@/sections/Roadmaps';
@@ -12,27 +11,31 @@ import { HowItWorks } from '@/sections/HowItWorks';
 import { CommunityHub } from '@/sections/CommunityHub';
 import { CTA } from '@/sections/CTA';
 import { Footer } from '@/sections/Footer';
-import { Dashboard } from '@/sections/Dashboard';
-import { TopicDetail } from '@/sections/TopicDetail';
-import { Problems } from '@/sections/Problems';
-import { Notes } from '@/sections/Notes';
-import { Leaderboard } from '@/sections/Leaderboard';
-import { DailyChallenges } from '@/sections/DailyChallenges';
-import { CommunityForum } from '@/sections/CommunityForum';
 import { AuthModal } from '@/components/custom/AuthModal';
 import { AlgoBot } from '@/components/custom/AlgoBot';
-import { AdminPanel } from '@/sections/AdminPanel';
 import { ScrollToTop } from '@/components/custom/ScrollToTop';
-import { Documentation } from '@/sections/Documentation';
-import { ApiReference } from '@/sections/ApiReference';
-import { ProblemWorkspace } from '@/sections/ProblemWorkspace';
 import { Toaster } from '@/components/ui/sonner';
 import { toast } from 'sonner';
+import { PageSkeleton } from '@/components/custom/PageSkeleton';
+
+// Lazy loaded views
+const PathDetail = lazy(() => import('@/sections/PathDetail').then(m => ({ default: m.PathDetail })));
+const Dashboard = lazy(() => import('@/sections/Dashboard').then(m => ({ default: m.Dashboard })));
+const TopicDetail = lazy(() => import('@/sections/TopicDetail').then(m => ({ default: m.TopicDetail })));
+const Problems = lazy(() => import('@/sections/Problems').then(m => ({ default: m.Problems })));
+const Notes = lazy(() => import('@/sections/Notes').then(m => ({ default: m.Notes })));
+const Leaderboard = lazy(() => import('@/sections/Leaderboard').then(m => ({ default: m.Leaderboard })));
+const DailyChallenges = lazy(() => import('@/sections/DailyChallenges').then(m => ({ default: m.DailyChallenges })));
+const CommunityForum = lazy(() => import('@/sections/CommunityForum').then(m => ({ default: m.CommunityForum })));
+const AdminPanel = lazy(() => import('@/sections/AdminPanel').then(m => ({ default: m.AdminPanel })));
+const Documentation = lazy(() => import('@/sections/Documentation').then(m => ({ default: m.Documentation })));
+const ApiReference = lazy(() => import('@/sections/ApiReference').then(m => ({ default: m.ApiReference })));
+const ProblemWorkspace = lazy(() => import('@/sections/ProblemWorkspace').then(m => ({ default: m.ProblemWorkspace })));
 
 type View = 'home' | 'dashboard' | 'topic' | 'path' | 'problems' | 'notes' | 'leaderboard' | 'community' | 'daily-challenges' | 'admin' | 'docs' | 'api' | 'workspace';
 
 function AppContent() {
-  const { user, isLoading } = useAuth();
+  const { user, isAuthReady } = useAuth();
   const [currentView, setCurrentView] = useState<View>('home');
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
   const [selectedPathId, setSelectedPathId] = useState<string | null>(null);
@@ -58,7 +61,7 @@ function AppContent() {
           setSelectedWorkspaceId(wId);
           setCurrentView('workspace');
         } else if (hash === 'dashboard') {
-          if (user) {
+          if (user || !isAuthReady) {
             setCurrentView('dashboard');
           } else {
             window.location.hash = '';
@@ -67,7 +70,7 @@ function AppContent() {
         } else if (hash === 'problems') {
           setCurrentView('problems');
         } else if (hash === 'notes') {
-          if (user) {
+          if (user || !isAuthReady) {
             setCurrentView('notes');
           } else {
             window.location.hash = '';
@@ -78,14 +81,14 @@ function AppContent() {
         } else if (hash === 'community') {
           setCurrentView('community');
         } else if (hash === 'daily-challenges') {
-          if (user) {
+          if (user || !isAuthReady) {
             setCurrentView('daily-challenges');
           } else {
             window.location.hash = '';
             setCurrentView('home');
           }
         } else if (hash === 'admin') {
-          if (user && user.role === 'admin') {
+          if ((user && user.role === 'admin') || !isAuthReady) {
             setCurrentView('admin');
           } else {
             window.location.hash = '';
@@ -107,7 +110,7 @@ function AppContent() {
     handleHashChange();
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, [user]);
+  }, [user, isAuthReady]);
 
   const handleNavigate = (view: View, topicId?: string) => {
     if ((view === 'dashboard' || view === 'notes' || view === 'daily-challenges' || (view === 'topic' && topicId)) && !user) {
@@ -144,6 +147,10 @@ function AppContent() {
   };
 
   const renderView = () => {
+    if (!isAuthReady && ['dashboard', 'notes', 'daily-challenges', 'admin'].includes(currentView)) {
+      return <PageSkeleton />;
+    }
+
     switch (currentView) {
       case 'dashboard':
         return <Dashboard onNavigate={handleNavigate} />;
@@ -219,20 +226,8 @@ function AppContent() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#141414] flex items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center"
-        >
-          <div className="w-12 h-12 border-2 border-[#a088ff] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-white/60">Loading...</p>
-        </motion.div>
-      </div>
-    );
-  }
+  // We removed the global full-page isLoading check.
+  // The app will now render immediately (optimistic UI), showing PageSkeleton where needed.
 
   return (
     <div className="min-h-screen bg-[#141414]">
@@ -253,7 +248,9 @@ function AppContent() {
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
           >
-            {renderView()}
+            <Suspense fallback={<PageSkeleton />}>
+              {renderView()}
+            </Suspense>
           </motion.div>
         </AnimatePresence>
       </main>

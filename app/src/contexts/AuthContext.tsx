@@ -16,6 +16,7 @@ interface AuthContextType {
   user: User | null;
   profile: any | null;
   isLoading: boolean;
+  isAuthReady: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, name: string) => Promise<{ error: any }>;
   signInWithGoogle: (credential?: string) => Promise<{ error: any; isNewUser?: boolean }>;
@@ -32,7 +33,8 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<any | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const isLoading = false;
+  const [isAuthReady, setIsAuthReady] = useState(false);
 
   const refreshProfile = async () => {
     const token = localStorage.getItem('token');
@@ -70,7 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const checkSession = async () => {
       const token = localStorage.getItem('token');
       if (!token) {
-        setIsLoading(false);
+        setIsAuthReady(true);
         return;
       }
 
@@ -80,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('Session check failed', error);
         localStorage.removeItem('token');
       } finally {
-        setIsLoading(false);
+        setIsAuthReady(true);
       }
     };
 
@@ -219,6 +221,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       profile,
       isLoading,
+      isAuthReady,
       signIn,
       signUp,
       signInWithGoogle,
