@@ -29,8 +29,6 @@ model User {
   progress   UserProgress[]
   forumPosts ForumPost[]    @relation("PostAuthor")
   replies    Reply[]        @relation("ReplyAuthor")
-
-  @@map("users")
 }
 
 type SolvedProblem {
@@ -56,8 +54,6 @@ model LearningPath {
 
   // Relations
   topics Topic[]
-
-  @@map("learningpaths")
 }
 
 model Topic {
@@ -75,8 +71,6 @@ model Topic {
   // Relations
   path     LearningPath @relation(fields: [path_slug], references: [slug])
   problems Problem[]
-
-  @@map("topics")
 }
 
 model Problem {
@@ -96,8 +90,6 @@ model Problem {
   // Relations
   topic    Topic          @relation(fields: [topic_slug], references: [slug])
   progress UserProgress[]
-
-  @@map("problems")
 }
 
 type TestCase {
@@ -121,7 +113,6 @@ model UserProgress {
   problem Problem @relation(fields: [problem_id], references: [id])
 
   @@unique([user_id, problem_id])
-  @@map("userprogresses")
 }
 
 model ForumPost {
@@ -142,7 +133,6 @@ model ForumPost {
 
   @@index([category, createdAt(sort: Desc)])
   @@index([createdAt(sort: Desc)])
-  @@map("forumposts")
 }
 
 model Reply {
@@ -157,6 +147,4 @@ model Reply {
   // Relations
   author User      @relation("ReplyAuthor", fields: [authorId], references: [id])
   post   ForumPost @relation(fields: [postId], references: [id])
-
-  @@map("replies")
 }
