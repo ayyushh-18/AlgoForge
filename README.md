@@ -9,6 +9,9 @@
 </div>
 <br />
 
+> [!NOTE]
+> Interested in contributing to AlgoForge? Please read our [Contributing Guide](CONTRIBUTING.md) to set up your local development environment and learn about our workflow.
+
 AlgoForge is designed to help developers build algorithmic intuition through consistent practice. Inspired by top-tier learning platforms, it combines a highly structured roadmap with engaging gamification elements—such as streaks, XP systems, and global leaderboards—to make learning addictive and rewarding.
 
 ## Key Features
@@ -38,7 +41,7 @@ The platform is built using a modern, scalable stack:
 **Backend**
 - **Runtime:** Node.js
 - **Framework:** Express.js
-- **Database:** MongoDB & Mongoose
+- **Database:** MongoDB (via Prisma)
 - **Auth:** JWT (JSON Web Tokens) & Google OAuth 2.0
 
 ## Getting Started
