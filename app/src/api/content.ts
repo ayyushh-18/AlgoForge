@@ -36,11 +36,15 @@ export const getProblemById = async (id: string) => {
     const response = await axios.get(`${API_BASE_URL}/api/content/problems/${id}`);
     return response.data;
 };
+const getAuthHeader = () => {
+    const token = localStorage.getItem('token');
+    return { headers: { Authorization: `Bearer ${token}` } };
+};
 
 export const executeCode = async (id: string, code: string, language: string) => {
     const response = await axios.post(`${API_BASE_URL}/api/content/problems/${id}/execute`, {
         code,
         language
-    });
+    }, getAuthHeader());
     return response.data;
 };

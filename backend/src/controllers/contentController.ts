@@ -134,6 +134,11 @@ export const executeCode = async (req: Request, res: Response) => {
         const { id } = req.params;
         const { code, language } = req.body;
 
+        const MAX_CODE_LENGTH = 50000;
+        if (code && typeof code === 'string' && code.length > MAX_CODE_LENGTH) {
+            return res.status(400).json({ message: 'Code exceeds maximum allowed length.' });
+        }
+
         if (!code || !language) {
             return res.status(400).json({ message: 'Code and language are required' });
         }
