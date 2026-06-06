@@ -5,6 +5,11 @@ import connectDB from './config/db';
 
 dotenv.config();
 
+// server.ts — add before app.listen()
+if (!process.env.JWT_SECRET) {
+  throw new Error('FATAL: JWT_SECRET environment variable is not set.');
+}
+
 const app: Express = express();
 const port = process.env.PORT || 5000;
 
@@ -64,12 +69,6 @@ app.get('/', (req: Request, res: Response) => {
 app.get('/api/health', (req: Request, res: Response) => {
     res.json({ status: 'ok', message: 'Server is healthy' });
 });
-
-// server.ts — add before app.listen()
-if (!process.env.JWT_SECRET) {
-  throw new Error('FATAL: JWT_SECRET environment variable is not set.');
-}
-
 
 app.listen(port, () => {
     console.log(`[server]: Server is running at http://localhost:${port}`);
