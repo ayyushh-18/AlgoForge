@@ -8,7 +8,7 @@ const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // Generate JWT
 const generateToken = (id: string) => {
-    jwt.sign({ id }, process.env.JWT_SECRET!, { expiresIn: '30d' });
+    return jwt.sign({ id }, process.env.JWT_SECRET!, { expiresIn: '30d' });
 };
 
 // @desc    Register new user
