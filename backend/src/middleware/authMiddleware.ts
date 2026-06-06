@@ -24,7 +24,7 @@ const protect = async (req: Request, res: Response, next: NextFunction) => {
         try {
             token = req.headers.authorization.split(' ')[1];
 
-            const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret') as JwtPayload;
+            const decoded = jwt.verify(token, process.env.JWT_SECRET!) as JwtPayload;
 
             const user = await prisma.user.findUnique({
                 where: { id: decoded.id },
