@@ -9,6 +9,8 @@ import {
     getAllTopics,
     executeCode
 } from '../controllers/contentController';
+import { protect } from '../middleware/authMiddleware';
+import { executionRateLimiter } from '../middleware/rateLimiter';
 
 const router = express.Router();
 
@@ -19,6 +21,6 @@ router.get('/topics/:topicId', getTopicById);
 router.get('/topics/:topicId/problems', getProblemsByTopic);
 router.get('/problems', getAllProblems);
 router.get('/problems/:id', getProblemById);
-router.post('/problems/:id/execute', executeCode);
+router.post('/problems/:id/execute', protect, executionRateLimiter, executeCode);
 
 export default router;

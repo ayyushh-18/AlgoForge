@@ -39,7 +39,7 @@ export const getTopicsByPath = async (req: Request, res: Response) => {
             where: { path_slug: pathId },
             orderBy: { order_index: 'asc' }
         });
-        
+
         res.json(topics.map(t => ({ ...t, id: t.slug })));
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });
@@ -134,8 +134,12 @@ export const executeCode = async (req: Request, res: Response) => {
         const { id } = req.params;
         const { code, language } = req.body;
 
-        if (!code || !language) {
+        const MAX_CODE_LENGTH = 50000;
+        if (typeof code !== 'string' || typeof language !== 'string' || !code || !language) {
             return res.status(400).json({ message: 'Code and language are required' });
+        }
+        if (code.length > MAX_CODE_LENGTH) {
+            return res.status(400).json({ message: 'Code exceeds maximum allowed length.' });
         }
 
         const problem = await prisma.problem.findUnique({
@@ -154,10 +158,10 @@ export const executeCode = async (req: Request, res: Response) => {
         };
 
         const version = PISTON_LANGUAGES[language] || '*';
-        
+
         // If no test cases exist, just run the code with empty stdin
-        const testCases = problem.testCases && problem.testCases.length > 0 
-            ? problem.testCases 
+        const testCases = problem.testCases && problem.testCases.length > 0
+            ? problem.testCases
             : [{ input: '', expectedOutput: '', isHidden: false }];
 
         const results = await Promise.all(testCases.map(async (testCase) => {
@@ -187,7 +191,7 @@ export const executeCode = async (req: Request, res: Response) => {
             const stderr = data.run?.stderr || '';
             const error = data.compile?.stderr || data.run?.stderr || '';
             const isError = data.run?.signal ? true : data.run?.code !== 0;
-            
+
             let passed = false;
             if (!isError) {
                 // Trim trailing whitespaces/newlines for comparison
