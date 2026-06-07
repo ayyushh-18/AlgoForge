@@ -15,6 +15,16 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { getUserProgress, updateNotes } from '@/api/userActions';
 import { getAllProblems } from '@/api/content';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from '@/components/ui/alert-dialog';
 
 interface Note {
   id: string;           // UserProgress _id
@@ -37,6 +47,7 @@ export function Notes() {
   // New note creation state
   const [newNoteProblemId, setNewNoteProblemId] = useState('');
   const [problemSearch, setProblemSearch] = useState('');
+  const [noteToDelete, setNoteToDelete] = useState<Note | null>(null);
 
   // Fetch notes from backend
   useEffect(() => {
@@ -154,19 +165,25 @@ export function Notes() {
     setSelectedNote(null);
   };
 
-  const handleDelete = async (note: Note) => {
-    if (confirm('Are you sure you want to delete this note?')) {
-      try {
-        // Delete note by setting it to empty string
-        await updateNotes(note.problemId, '');
-        setNotes(notes.filter(n => n.id !== note.id));
-        if (selectedNote?.id === note.id) {
-          setSelectedNote(null);
-        }
-        toast.success('Note deleted');
-      } catch (e) {
-        toast.error('Failed to delete note');
+  const handleDelete = (note: Note) => {
+    setNoteToDelete(note);
+  };
+
+  const confirmDelete = async () => {
+    if (!noteToDelete) return;
+    try {
+      // Delete note by setting it to empty string
+      await updateNotes(noteToDelete.problemId, '');
+      setNotes(notes.filter(n => n.id !== noteToDelete.id));
+      if (selectedNote?.id === noteToDelete.id) {
+        setSelectedNote(null);
       }
+      toast.success('Note deleted');
+    } catch (e) {
+      console.error('Failed to delete note', e);
+      toast.error('Failed to delete note');
+    } finally {
+      setNoteToDelete(null);
     }
   };
 
@@ -423,6 +440,30 @@ export function Notes() {
           </motion.div>
         </div>
       </div>
+
+      <AlertDialog open={!!noteToDelete} onOpenChange={(open) => !open && setNoteToDelete(null)}>
+        <AlertDialogContent className="bg-[#141414] border-white/10 text-white max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl font-bold text-white">
+              Delete note for {noteToDelete?.problemTitle}?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-white/60 text-sm">
+              This action cannot be undone. Are you sure you want to permanently delete this note?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-4">
+            <AlertDialogCancel className="bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white transition-colors">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-red-600 text-white hover:bg-red-700 transition-colors"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }
