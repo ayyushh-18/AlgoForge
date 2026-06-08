@@ -33,22 +33,7 @@ export function ProblemWorkspace({ problemId, onBack }: ProblemWorkspaceProps) {
         setLoading(true);
         const data = await getProblemById(problemId);
         setProblem(data);
-        
-        // Load saved code from local storage
-        const savedCode = localStorage.getItem(`code_${problemId}_${language}`);
-        if (savedCode) {
-          setCode(savedCode);
-        } else {
-          // Provide some boilerplate based on language
-          const boilerplate: Record<string, string> = {
-            javascript: `function solve() {\n  // Your code here\n}\n`,
-            python: `def solve():\n    # Your code here\n    pass\n`,
-            cpp: `#include <iostream>\nusing namespace std;\n\nint main() {\n    // Your code here\n    return 0;\n}\n`,
-            java: `public class Main {\n    public static void main(String[] args) {\n        // Your code here\n    }\n}\n`,
-          };
-          setCode(boilerplate[language] || '// Write your code here');
-        }
-      } catch (error) {
+      } catch {
         toast.error('Failed to load problem');
       } finally {
         setLoading(false);
@@ -56,7 +41,24 @@ export function ProblemWorkspace({ problemId, onBack }: ProblemWorkspaceProps) {
     };
 
     fetchProblem();
-  }, [problemId, language]);
+  }, [problemId]);
+
+  useEffect(() => {
+    // Load saved code from local storage
+    const savedCode = localStorage.getItem(`code_${problemId}_${language}`);
+    if (savedCode) {
+      setCode(savedCode);
+    } else {
+      // Provide some boilerplate based on language
+      const boilerplate: Record<string, string> = {
+        javascript: `function solve() {\n  // Your code here\n}\n`,
+        python: `def solve():\n    # Your code here\n    pass\n`,
+        cpp: `#include <iostream>\nusing namespace std;\n\nint main() {\n    // Your code here\n    return 0;\n}\n`,
+        java: `public class Main {\n    public static void main(String[] args) {\n        // Your code here\n    }\n}\n`,
+      };
+      setCode(boilerplate[language] || '// Write your code here');
+    }
+  }, [language]);
 
   const handleEditorChange = (value: string | undefined) => {
     if (value !== undefined) {
@@ -70,10 +72,10 @@ export function ProblemWorkspace({ problemId, onBack }: ProblemWorkspaceProps) {
       toast.error('Code cannot be empty');
       return;
     }
-    
+
     setIsExecuting(true);
     setExecutionResult({ status: 'Running...' });
-    
+
     try {
       const result = await executeCode(problemId, code, language);
       setExecutionResult(result);
@@ -135,19 +137,18 @@ export function ProblemWorkspace({ problemId, onBack }: ProblemWorkspaceProps) {
             {problem.difficulty}
           </span>
         </div>
-        
+
         <div className="flex items-center gap-3">
           <button
             onClick={handleRunCode}
             disabled={isExecuting}
-            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg border border-white/10 text-sm transition-colors ${
-              isExecuting ? 'bg-white/10 text-white/40 cursor-not-allowed' : 'bg-white/5 hover:bg-white/10 text-white/80 hover:text-white'
-            }`}
+            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg border border-white/10 text-sm transition-colors ${isExecuting ? 'bg-white/10 text-white/40 cursor-not-allowed' : 'bg-white/5 hover:bg-white/10 text-white/80 hover:text-white'
+              }`}
           >
             {isExecuting ? (
-               <div className="w-4 h-4 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
+              <div className="w-4 h-4 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
             ) : (
-               <Play className="w-4 h-4" />
+              <Play className="w-4 h-4" />
             )}
             <span className="hidden sm:inline">{isExecuting ? 'Running' : 'Run Code'}</span>
           </button>
@@ -171,7 +172,7 @@ export function ProblemWorkspace({ problemId, onBack }: ProblemWorkspaceProps) {
           <div className="flex-1 overflow-y-auto p-6 scrollbar-custom">
             <div className="prose prose-invert max-w-none">
               <h1 className="text-2xl font-bold text-white mb-4">{problem.title}</h1>
-              
+
               <div className="flex flex-wrap gap-2 mb-6">
                 {(problem.tags || []).map((tag: string) => (
                   <span key={tag} className="px-2 py-1 rounded bg-white/10 text-white/70 text-xs">
@@ -205,20 +206,20 @@ export function ProblemWorkspace({ problemId, onBack }: ProblemWorkspaceProps) {
               </select>
               <ChevronDown className="w-3 h-3 text-white/40" />
             </div>
-            
+
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <span className="text-white/40 text-xs">A</span>
-                <input 
-                  type="range" 
-                  min="12" max="24" 
-                  value={fontSize} 
+                <input
+                  type="range"
+                  min="12" max="24"
+                  value={fontSize}
                   onChange={(e) => setFontSize(parseInt(e.target.value))}
                   className="w-16 accent-[#a088ff]"
                 />
                 <span className="text-white/40 text-xs text-xl">A</span>
               </div>
-              <button 
+              <button
                 onClick={() => setTheme(theme === 'vs-dark' ? 'light' : 'vs-dark')}
                 className="text-white/60 hover:text-white"
                 title="Toggle Theme"
@@ -227,7 +228,7 @@ export function ProblemWorkspace({ problemId, onBack }: ProblemWorkspaceProps) {
               </button>
             </div>
           </div>
-          
+
           {/* Editor Area */}
           <div className="flex-1 min-h-0 bg-[#1e1e1e]">
             <Editor
