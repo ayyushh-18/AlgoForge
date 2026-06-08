@@ -126,11 +126,15 @@ export function Notes() {
 
       try {
         const responseData = await updateNotes(newNoteProblemId, editForm.content);
-        const realNoteId = responseData?.progress?._id || responseData?.progress?.id || responseData?._id || responseData?.id;
+        const realNoteId = responseData?._id || responseData?.id;
         
+        if (!realNoteId) {
+          throw new Error('Invalid ID returned from backend');
+        }
+
         const problem = problems.find((p: any) => p.id === newNoteProblemId);
         const newNote: Note = {
-          id: realNoteId as string,
+          id: realNoteId,
           problemId: newNoteProblemId,
           problemTitle: problem?.title || 'Unknown Problem',
           content: editForm.content,
