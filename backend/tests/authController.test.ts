@@ -1,6 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import bcrypt from 'bcryptjs';
 
+
+
+const verifyIdTokenMock = vi.hoisted(() => vi.fn());
+
+vi.mock('google-auth-library', () => {
+    return {
+        OAuth2Client: function(this: any) {
+            this.verifyIdToken = verifyIdTokenMock;
+        }
+    };
+});
+
 vi.mock('../src/config/db', () => ({
     prisma: {
         user: {
@@ -11,13 +23,12 @@ vi.mock('../src/config/db', () => ({
     }
 }));
 
-import { registerUser, loginUser } from '../src/controllers/authController';
+import { registerUser, loginUser, googleAuth } from '../src/controllers/authController';
 import { prisma } from '../src/config/db';
 
 beforeEach(() => {
     vi.clearAllMocks();
 });
-import { googleAuth } from '../src/controllers/authController';
 // Helper to make mock req/res
 const mockRes = () => {
     const res: any = {};
@@ -146,6 +157,7 @@ describe('loginUser', () => {
 
 describe('googleAuth', () => {
     it('returns 400 for invalid google token', async () => {
+        verifyIdTokenMock.mockRejectedValueOnce(new Error('invalid token'));
         const req = mockReq({ token: 'bad-token' });
         const res = mockRes();
 
