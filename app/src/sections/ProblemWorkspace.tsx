@@ -58,7 +58,7 @@ export function ProblemWorkspace({ problemId, onBack }: ProblemWorkspaceProps) {
       };
       setCode(boilerplate[language] || '// Write your code here');
     }
-  }, [language]);
+  }, [problemId, language]);
 
   const handleEditorChange = (value: string | undefined) => {
     if (value !== undefined) {
