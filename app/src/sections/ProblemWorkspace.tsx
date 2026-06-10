@@ -17,13 +17,20 @@ const SUPPORTED_LANGUAGES = [
   { id: 'java', name: 'Java' }
 ];
 
+/**
+ * ProblemWorkspace renders a full IDE-like workspace for a given coding problem.
+ * It fetches the problem by ID, manages per-language code state in localStorage,
+ * handles code execution via the backend, and allows submission.
+ *
+ * @param problemId - The unique identifier of the problem to load.
+ * @param onBack    - Callback invoked when the user navigates back to the problem list.
+ */
 export function ProblemWorkspace({ problemId, onBack }: ProblemWorkspaceProps) {
   const [problem, setProblem] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [code, setCode] = useState<string>('// Write your code here');
   const [language, setLanguage] = useState<string>('javascript');
   const [theme, setTheme] = useState<'vs-dark' | 'light'>('vs-dark');
-  const [fontSize, setFontSize] = useState<number>(14);
   const [executionResult, setExecutionResult] = useState<any>(null);
   const [isExecuting, setIsExecuting] = useState(false);
 
@@ -60,6 +67,12 @@ export function ProblemWorkspace({ problemId, onBack }: ProblemWorkspaceProps) {
     }
   }, [problemId, language]);
 
+  /**
+   * Handles Monaco editor content changes, updating local state and
+   * persisting the code to localStorage keyed by problem ID and language.
+   *
+   * @param value - The new editor content, or undefined if the editor is unmounted.
+   */
   const handleEditorChange = (value: string | undefined) => {
     if (value !== undefined) {
       setCode(value);
@@ -67,6 +80,12 @@ export function ProblemWorkspace({ problemId, onBack }: ProblemWorkspaceProps) {
     }
   };
 
+  /**
+   * Sends the current editor code to the backend for execution and updates
+   * the console output with the results.
+   *
+   * @returns The execution result object on success, or an error object on failure.
+   */
   const handleRunCode = async () => {
     if (!code.trim()) {
       toast.error('Code cannot be empty');
@@ -90,6 +109,11 @@ export function ProblemWorkspace({ problemId, onBack }: ProblemWorkspaceProps) {
     }
   };
 
+  /**
+   * Runs the current code and, if all test cases pass, marks the problem as
+   * SOLVED by calling the user-actions API. Silently ignores auth errors so
+   * unauthenticated users can still test their code.
+   */
   const handleSubmit = async () => {
     const res = await handleRunCode();
     if (res?.success && res?.allPassed) {
@@ -208,17 +232,6 @@ export function ProblemWorkspace({ problemId, onBack }: ProblemWorkspaceProps) {
             </div>
 
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-white/40 text-xs">A</span>
-                <input
-                  type="range"
-                  min="12" max="24"
-                  value={fontSize}
-                  onChange={(e) => setFontSize(parseInt(e.target.value))}
-                  className="w-16 accent-[#a088ff]"
-                />
-                <span className="text-white/40 text-xs text-xl">A</span>
-              </div>
               <button
                 onClick={() => setTheme(theme === 'vs-dark' ? 'light' : 'vs-dark')}
                 className="text-white/60 hover:text-white"
@@ -238,7 +251,7 @@ export function ProblemWorkspace({ problemId, onBack }: ProblemWorkspaceProps) {
               value={code}
               onChange={handleEditorChange}
               options={{
-                fontSize: fontSize,
+                fontSize: 14,
                 minimap: { enabled: false },
                 scrollBeyondLastLine: false,
                 smoothScrolling: true,
