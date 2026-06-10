@@ -208,6 +208,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        return { error: 'Not authenticated' };
+      }
       const res = await fetch(`${API_BASE_URL}/api/users/me`, {
         method: 'PUT',
         headers: {
