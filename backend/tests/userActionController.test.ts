@@ -1,0 +1,312 @@
+
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+vi.mock('../src/config/db', () => ({
+    prisma: {
+        userProgress: {
+            findUnique: vi.fn(),
+            create: vi.fn(),
+            update: vi.fn(),
+            findMany: vi.fn(),
+        },
+        user: {
+            findUnique: vi.fn(),
+            update: vi.fn(),
+        }
+    }
+}));
+
+import { updateProblemStatus } from '../src/controllers/userActionController';
+import { prisma } from '../src/config/db';
+
+beforeEach(() => {
+    vi.clearAllMocks();
+});
+import { toggleBookmark, updateNotes, getUserProgress } from '../src/controllers/userActionController';
+
+const mockRes = () => {
+    const res: any = {};
+    res.status = vi.fn().mockReturnValue(res);
+    res.json = vi.fn().mockReturnValue(res);
+    return res;
+};
+
+const mockReq = (params: object, body: object, userId = '507f1f77bcf86cd799439011') => ({
+    params,
+    body,
+    user: { id: userId }
+} as any);
+
+const baseUser = {
+    id: '507f1f77bcf86cd799439011',
+    xp_points: 100,
+    streak_days: 3,
+    last_active: null,
+    solvedProblems: [],
+    bookmarks: [],
+    activityLog: []
+};
+
+// ── Streak tests ──────────────────────────────────────────────
+
+describe('streak logic in updateProblemStatus', () => {
+    it('increments streak when last active was yesterday', async () => {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        (prisma.userProgress.findUnique as any).mockResolvedValue(null);
+        (prisma.userProgress.create as any).mockResolvedValue({ id: 'p1', status: 'SOLVED' });
+        (prisma.user.findUnique as any).mockResolvedValue({
+            ...baseUser,
+            last_active: yesterday,
+            streak_days: 3
+        });
+        (prisma.user.update as any).mockResolvedValue({});
+
+        const req = mockReq({ problemId: 'prob1' }, { status: 'SOLVED' });
+        const res = mockRes();
+
+        await updateProblemStatus(req, res);
+
+        expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
+            data: expect.objectContaining({ streak_days: 4 })
+        }));
+    });
+
+    it('resets streak to 1 when last active was 2+ days ago', async () => {
+        const twoDaysAgo = new Date();
+        twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+
+        (prisma.userProgress.findUnique as any).mockResolvedValue(null);
+        (prisma.userProgress.create as any).mockResolvedValue({ id: 'p1', status: 'SOLVED' });
+        (prisma.user.findUnique as any).mockResolvedValue({
+            ...baseUser,
+            last_active: twoDaysAgo,
+            streak_days: 5
+        });
+        (prisma.user.update as any).mockResolvedValue({});
+
+        const req = mockReq({ problemId: 'prob1' }, { status: 'SOLVED' });
+        const res = mockRes();
+
+        await updateProblemStatus(req, res);
+
+        expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
+            data: expect.objectContaining({ streak_days: 1 })
+        }));
+    });
+
+    it('keeps streak unchanged when already active today', async () => {
+        const today = new Date();
+
+        (prisma.userProgress.findUnique as any).mockResolvedValue(null);
+        (prisma.userProgress.create as any).mockResolvedValue({ id: 'p1', status: 'SOLVED' });
+        (prisma.user.findUnique as any).mockResolvedValue({
+            ...baseUser,
+            last_active: today,
+            streak_days: 7
+        });
+        (prisma.user.update as any).mockResolvedValue({});
+
+        const req = mockReq({ problemId: 'prob1' }, { status: 'SOLVED' });
+        const res = mockRes();
+
+        await updateProblemStatus(req, res);
+
+        expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
+            data: expect.objectContaining({ streak_days: 7 })
+        }));
+    });
+});
+
+// ── XP tests ──────────────────────────────────────────────────
+
+describe('XP logic in updateProblemStatus', () => {
+    it('increments XP by 25 when problem newly solved', async () => {
+        (prisma.userProgress.findUnique as any).mockResolvedValue(null);
+        (prisma.userProgress.create as any).mockResolvedValue({ id: 'p1', status: 'SOLVED' });
+        (prisma.user.findUnique as any).mockResolvedValue({ ...baseUser, last_active: null });
+        (prisma.user.update as any).mockResolvedValue({});
+
+        const req = mockReq({ problemId: 'prob1' }, { status: 'SOLVED' });
+        const res = mockRes();
+
+        await updateProblemStatus(req, res);
+
+        expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
+            data: expect.objectContaining({ xp_points: { increment: 25 } })
+        }));
+    });
+
+    it('decrements XP by 25 when problem un-solved', async () => {
+        (prisma.userProgress.findUnique as any).mockResolvedValue({ id: 'p1', status: 'SOLVED' });
+        (prisma.userProgress.update as any).mockResolvedValue({ id: 'p1', status: 'TODO' });
+        (prisma.user.findUnique as any).mockResolvedValue({
+            ...baseUser,
+            solvedProblems: [{ problemId: 'prob1', solvedAt: new Date() }]
+        });
+        (prisma.user.update as any).mockResolvedValue({});
+
+        const req = mockReq({ problemId: 'prob1' }, { status: 'TODO' });
+        const res = mockRes();
+
+        await updateProblemStatus(req, res);
+
+        expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
+            data: expect.objectContaining({ xp_points: { decrement: 25 } })
+        }));
+    });
+
+    it('does not change XP when status changes between non-SOLVED states', async () => {
+        (prisma.userProgress.findUnique as any).mockResolvedValue({ id: 'p1', status: 'TODO' });
+        (prisma.userProgress.update as any).mockResolvedValue({ id: 'p1', status: 'IN_PROGRESS' });
+
+        const req = mockReq({ problemId: 'prob1' }, { status: 'IN_PROGRESS' });
+        const res = mockRes();
+
+        await updateProblemStatus(req, res);
+
+        // user.update should NOT be called for XP changes
+        expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+});
+
+// ── Activity log tests ────────────────────────────────────────
+
+describe('activity log in updateProblemStatus', () => {
+    it('adds new date entry to activity log when first solve of the day', async () => {
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        (prisma.userProgress.findUnique as any).mockResolvedValue(null);
+        (prisma.userProgress.create as any).mockResolvedValue({ id: 'p1', status: 'SOLVED' });
+        (prisma.user.findUnique as any).mockResolvedValue({
+            ...baseUser,
+            activityLog: [],
+            last_active: null
+        });
+        (prisma.user.update as any).mockResolvedValue({});
+
+        const req = mockReq({ problemId: 'prob1' }, { status: 'SOLVED' });
+        const res = mockRes();
+
+        await updateProblemStatus(req, res);
+
+        expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
+            data: expect.objectContaining({
+                activityLog: [{ date: todayStr, count: 1 }]
+            })
+        }));
+    });
+
+    it('increments count on existing date entry', async () => {
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        (prisma.userProgress.findUnique as any).mockResolvedValue(null);
+        (prisma.userProgress.create as any).mockResolvedValue({ id: 'p1', status: 'SOLVED' });
+        (prisma.user.findUnique as any).mockResolvedValue({
+            ...baseUser,
+            activityLog: [{ date: todayStr, count: 2 }],
+            last_active: new Date()
+        });
+        (prisma.user.update as any).mockResolvedValue({});
+
+        const req = mockReq({ problemId: 'prob2' }, { status: 'SOLVED' });
+        const res = mockRes();
+
+        await updateProblemStatus(req, res);
+
+        expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
+            data: expect.objectContaining({
+                activityLog: [{ date: todayStr, count: 3 }]
+            })
+        }));
+    });
+});
+
+// ── toggleBookmark ────────────────────────────────────────────
+
+describe('toggleBookmark', () => {
+    it('creates progress and adds bookmark when none exists', async () => {
+        (prisma.userProgress.findUnique as any).mockResolvedValue(null);
+        (prisma.userProgress.create as any).mockResolvedValue({ id: 'p1', is_bookmarked: true });
+        (prisma.user.findUnique as any).mockResolvedValue({ ...baseUser, bookmarks: [] });
+        (prisma.user.update as any).mockResolvedValue({});
+
+        const req = mockReq({ problemId: 'prob1' }, {});
+        const res = mockRes();
+
+        await toggleBookmark(req, res);
+
+        expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
+            data: expect.objectContaining({ bookmarks: ['prob1'] })
+        }));
+        expect(res.json).toHaveBeenCalled();
+    });
+
+    it('toggles off bookmark when already bookmarked', async () => {
+        (prisma.userProgress.findUnique as any).mockResolvedValue({ id: 'p1', is_bookmarked: true });
+        (prisma.userProgress.update as any).mockResolvedValue({ id: 'p1', is_bookmarked: false });
+        (prisma.user.findUnique as any).mockResolvedValue({ ...baseUser, bookmarks: ['prob1'] });
+        (prisma.user.update as any).mockResolvedValue({});
+
+        const req = mockReq({ problemId: 'prob1' }, {});
+        const res = mockRes();
+
+        await toggleBookmark(req, res);
+
+        expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
+            data: expect.objectContaining({ bookmarks: [] })
+        }));
+    });
+});
+
+// ── updateNotes ───────────────────────────────────────────────
+
+describe('updateNotes', () => {
+    it('updates notes on existing progress', async () => {
+        (prisma.userProgress.findUnique as any).mockResolvedValue({ id: 'p1', notes: '' });
+        (prisma.userProgress.update as any).mockResolvedValue({ id: 'p1', notes: 'my note' });
+
+        const req = mockReq({ problemId: 'prob1' }, { notes: 'my note' });
+        const res = mockRes();
+
+        await updateNotes(req, res);
+
+        expect(prisma.userProgress.update).toHaveBeenCalled();
+        expect(res.json).toHaveBeenCalled();
+    });
+
+    it('creates progress with notes when none exists', async () => {
+        (prisma.userProgress.findUnique as any).mockResolvedValue(null);
+        (prisma.userProgress.create as any).mockResolvedValue({ id: 'p1', notes: 'new note' });
+
+        const req = mockReq({ problemId: 'prob1' }, { notes: 'new note' });
+        const res = mockRes();
+
+        await updateNotes(req, res);
+
+        expect(prisma.userProgress.create).toHaveBeenCalled();
+        expect(res.json).toHaveBeenCalled();
+    });
+});
+
+// ── getUserProgress ───────────────────────────────────────────
+
+describe('getUserProgress', () => {
+    it('returns all progress for user', async () => {
+        (prisma.userProgress.findMany as any).mockResolvedValue([
+            { id: 'p1', status: 'SOLVED' },
+            { id: 'p2', status: 'TODO' }
+        ]);
+
+        const req = mockReq({}, {});
+        const res = mockRes();
+
+        await getUserProgress(req, res);
+
+        expect(res.json).toHaveBeenCalledWith([
+            { id: 'p1', status: 'SOLVED' },
+            { id: 'p2', status: 'TODO' }
+        ]);
+    });
+});

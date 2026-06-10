@@ -1,9 +1,18 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/db';
 
-// @desc    Get all learning paths
-// @route   GET /api/content/paths
-// @access  Public
+/**
+ * @desc    Get all learning paths
+ * @route   GET /api/content/paths
+ * @access  Public
+ *
+ * Fetches all learning paths ordered by their display index, enriches each
+ * path with a total problem count, and maps `slug` to `id` for frontend
+ * compatibility.
+ *
+ * @param req - Express request object.
+ * @param res - Express response object. Returns a JSON array of learning paths.
+ */
 export const getLearningPaths = async (req: Request, res: Response) => {
     try {
         const paths = await prisma.learningPath.findMany({
@@ -29,9 +38,17 @@ export const getLearningPaths = async (req: Request, res: Response) => {
     }
 };
 
-// @desc    Get topics by learning path ID (slug)
-// @route   GET /api/content/paths/:pathId/topics
-// @access  Public
+/**
+ * @desc    Get topics by learning path ID (slug)
+ * @route   GET /api/content/paths/:pathId/topics
+ * @access  Public
+ *
+ * Fetches all topics that belong to the specified learning path, ordered by
+ * their display index, and maps `slug` to `id` for frontend compatibility.
+ *
+ * @param req - Express request. Expects `pathId` in `req.params`.
+ * @param res - Express response. Returns a JSON array of topic objects.
+ */
 export const getTopicsByPath = async (req: Request, res: Response) => {
     try {
         const { pathId } = req.params;
@@ -46,9 +63,16 @@ export const getTopicsByPath = async (req: Request, res: Response) => {
     }
 };
 
-// @desc    Get topic by ID (slug)
-// @route   GET /api/content/topics/:topicId
-// @access  Public
+/**
+ * @desc    Get topic by ID (slug)
+ * @route   GET /api/content/topics/:topicId
+ * @access  Public
+ *
+ * Fetches a single topic by its slug. Returns 404 if no matching topic exists.
+ *
+ * @param req - Express request. Expects `topicId` in `req.params`.
+ * @param res - Express response. Returns the topic object or an error message.
+ */
 export const getTopicById = async (req: Request, res: Response) => {
     try {
         const { topicId } = req.params;
@@ -64,9 +88,17 @@ export const getTopicById = async (req: Request, res: Response) => {
     }
 };
 
-// @desc    Get all topics
-// @route   GET /api/content/topics
-// @access  Public
+/**
+ * @desc    Get all topics
+ * @route   GET /api/content/topics
+ * @access  Public
+ *
+ * Fetches every topic across all learning paths, ordered by display index, and
+ * maps `slug` to `id` for frontend compatibility.
+ *
+ * @param req - Express request object.
+ * @param res - Express response. Returns a JSON array of all topic objects.
+ */
 export const getAllTopics = async (req: Request, res: Response) => {
     try {
         const topics = await prisma.topic.findMany({
@@ -78,9 +110,17 @@ export const getAllTopics = async (req: Request, res: Response) => {
     }
 };
 
-// @desc    Get problems by topic ID (slug)
-// @route   GET /api/content/topics/:topicId/problems
-// @access  Public (Authenticated user will get progress status later)
+/**
+ * @desc    Get problems by topic ID (slug)
+ * @route   GET /api/content/topics/:topicId/problems
+ * @access  Public (authenticated user will get progress status later)
+ *
+ * Fetches all problems belonging to the specified topic, ordered by their
+ * display index.
+ *
+ * @param req - Express request. Expects `topicId` in `req.params`.
+ * @param res - Express response. Returns a JSON array of problem objects.
+ */
 export const getProblemsByTopic = async (req: Request, res: Response) => {
     try {
         const { topicId } = req.params;
@@ -94,9 +134,16 @@ export const getProblemsByTopic = async (req: Request, res: Response) => {
     }
 };
 
-// @desc    Get all problems
-// @route   GET /api/content/problems
-// @access  Public
+/**
+ * @desc    Get all problems
+ * @route   GET /api/content/problems
+ * @access  Public
+ *
+ * Fetches every problem in the system, ordered by display index.
+ *
+ * @param req - Express request object.
+ * @param res - Express response. Returns a JSON array of all problem objects.
+ */
 export const getAllProblems = async (req: Request, res: Response) => {
     try {
         const problems = await prisma.problem.findMany({
@@ -108,9 +155,16 @@ export const getAllProblems = async (req: Request, res: Response) => {
     }
 };
 
-// @desc    Get problem by ID
-// @route   GET /api/content/problems/:id
-// @access  Public
+/**
+ * @desc    Get problem by ID
+ * @route   GET /api/content/problems/:id
+ * @access  Public
+ *
+ * Fetches a single problem by its unique ID. Returns 404 if not found.
+ *
+ * @param req - Express request. Expects `id` in `req.params`.
+ * @param res - Express response. Returns the problem object or an error message.
+ */
 export const getProblemById = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
@@ -126,9 +180,24 @@ export const getProblemById = async (req: Request, res: Response) => {
     }
 };
 
-// @desc    Execute code for a problem
-// @route   POST /api/content/problems/:id/execute
-// @access  Public (for now)
+/**
+ * @desc    Execute code for a problem
+ * @route   POST /api/content/problems/:id/execute
+ * @access  Protected (requires authentication + rate limiting)
+ *
+ * Validates the submitted code and language, retrieves the problem's test
+ * cases, then sends each test case to the Piston code-execution API. Returns
+ * a structured result indicating whether each test case passed or failed.
+ *
+ * Input validation:
+ * - `code` and `language` must be non-empty strings.
+ * - `code` must not exceed {@link MAX_CODE_LENGTH} characters.
+ *
+ * @param req - Express request. Expects `id` in `req.params` and
+ *              `{ code, language }` in `req.body`.
+ * @param res - Express response. Returns `{ success, allPassed, results }` on
+ *              success, or an appropriate HTTP error response.
+ */
 export const executeCode = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;

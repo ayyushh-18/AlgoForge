@@ -17,13 +17,20 @@ const SUPPORTED_LANGUAGES = [
   { id: 'java', name: 'Java' }
 ];
 
+/**
+ * ProblemWorkspace renders a full IDE-like workspace for a given coding problem.
+ * It fetches the problem by ID, manages per-language code state in localStorage,
+ * handles code execution via the backend, and allows submission.
+ *
+ * @param problemId - The unique identifier of the problem to load.
+ * @param onBack    - Callback invoked when the user navigates back to the problem list.
+ */
 export function ProblemWorkspace({ problemId, onBack }: ProblemWorkspaceProps) {
   const [problem, setProblem] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [code, setCode] = useState<string>('// Write your code here');
   const [language, setLanguage] = useState<string>('javascript');
   const [theme, setTheme] = useState<'vs-dark' | 'light'>('vs-dark');
-  const [fontSize, setFontSize] = useState<number>(14);
   const [executionResult, setExecutionResult] = useState<any>(null);
   const [isExecuting, setIsExecuting] = useState(false);
 
@@ -33,22 +40,7 @@ export function ProblemWorkspace({ problemId, onBack }: ProblemWorkspaceProps) {
         setLoading(true);
         const data = await getProblemById(problemId);
         setProblem(data);
-        
-        // Load saved code from local storage
-        const savedCode = localStorage.getItem(`code_${problemId}_${language}`);
-        if (savedCode) {
-          setCode(savedCode);
-        } else {
-          // Provide some boilerplate based on language
-          const boilerplate: Record<string, string> = {
-            javascript: `function solve() {\n  // Your code here\n}\n`,
-            python: `def solve():\n    # Your code here\n    pass\n`,
-            cpp: `#include <iostream>\nusing namespace std;\n\nint main() {\n    // Your code here\n    return 0;\n}\n`,
-            java: `public class Main {\n    public static void main(String[] args) {\n        // Your code here\n    }\n}\n`,
-          };
-          setCode(boilerplate[language] || '// Write your code here');
-        }
-      } catch (error) {
+      } catch {
         toast.error('Failed to load problem');
       } finally {
         setLoading(false);
@@ -56,8 +48,31 @@ export function ProblemWorkspace({ problemId, onBack }: ProblemWorkspaceProps) {
     };
 
     fetchProblem();
+  }, [problemId]);
+
+  useEffect(() => {
+    // Load saved code from local storage
+    const savedCode = localStorage.getItem(`code_${problemId}_${language}`);
+    if (savedCode) {
+      setCode(savedCode);
+    } else {
+      // Provide some boilerplate based on language
+      const boilerplate: Record<string, string> = {
+        javascript: `function solve() {\n  // Your code here\n}\n`,
+        python: `def solve():\n    # Your code here\n    pass\n`,
+        cpp: `#include <iostream>\nusing namespace std;\n\nint main() {\n    // Your code here\n    return 0;\n}\n`,
+        java: `public class Main {\n    public static void main(String[] args) {\n        // Your code here\n    }\n}\n`,
+      };
+      setCode(boilerplate[language] || '// Write your code here');
+    }
   }, [problemId, language]);
 
+  /**
+   * Handles Monaco editor content changes, updating local state and
+   * persisting the code to localStorage keyed by problem ID and language.
+   *
+   * @param value - The new editor content, or undefined if the editor is unmounted.
+   */
   const handleEditorChange = (value: string | undefined) => {
     if (value !== undefined) {
       setCode(value);
@@ -65,15 +80,21 @@ export function ProblemWorkspace({ problemId, onBack }: ProblemWorkspaceProps) {
     }
   };
 
+  /**
+   * Sends the current editor code to the backend for execution and updates
+   * the console output with the results.
+   *
+   * @returns The execution result object on success, or an error object on failure.
+   */
   const handleRunCode = async () => {
     if (!code.trim()) {
       toast.error('Code cannot be empty');
       return;
     }
-    
+
     setIsExecuting(true);
     setExecutionResult({ status: 'Running...' });
-    
+
     try {
       const result = await executeCode(problemId, code, language);
       setExecutionResult(result);
@@ -88,6 +109,11 @@ export function ProblemWorkspace({ problemId, onBack }: ProblemWorkspaceProps) {
     }
   };
 
+  /**
+   * Runs the current code and, if all test cases pass, marks the problem as
+   * SOLVED by calling the user-actions API. Silently ignores auth errors so
+   * unauthenticated users can still test their code.
+   */
   const handleSubmit = async () => {
     const res = await handleRunCode();
     if (res?.success && res?.allPassed) {
@@ -135,19 +161,18 @@ export function ProblemWorkspace({ problemId, onBack }: ProblemWorkspaceProps) {
             {problem.difficulty}
           </span>
         </div>
-        
+
         <div className="flex items-center gap-3">
           <button
             onClick={handleRunCode}
             disabled={isExecuting}
-            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg border border-white/10 text-sm transition-colors ${
-              isExecuting ? 'bg-white/10 text-white/40 cursor-not-allowed' : 'bg-white/5 hover:bg-white/10 text-white/80 hover:text-white'
-            }`}
+            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg border border-white/10 text-sm transition-colors ${isExecuting ? 'bg-white/10 text-white/40 cursor-not-allowed' : 'bg-white/5 hover:bg-white/10 text-white/80 hover:text-white'
+              }`}
           >
             {isExecuting ? (
-               <div className="w-4 h-4 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
+              <div className="w-4 h-4 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
             ) : (
-               <Play className="w-4 h-4" />
+              <Play className="w-4 h-4" />
             )}
             <span className="hidden sm:inline">{isExecuting ? 'Running' : 'Run Code'}</span>
           </button>
@@ -171,7 +196,7 @@ export function ProblemWorkspace({ problemId, onBack }: ProblemWorkspaceProps) {
           <div className="flex-1 overflow-y-auto p-6 scrollbar-custom">
             <div className="prose prose-invert max-w-none">
               <h1 className="text-2xl font-bold text-white mb-4">{problem.title}</h1>
-              
+
               <div className="flex flex-wrap gap-2 mb-6">
                 {(problem.tags || []).map((tag: string) => (
                   <span key={tag} className="px-2 py-1 rounded bg-white/10 text-white/70 text-xs">
@@ -205,20 +230,9 @@ export function ProblemWorkspace({ problemId, onBack }: ProblemWorkspaceProps) {
               </select>
               <ChevronDown className="w-3 h-3 text-white/40" />
             </div>
-            
+
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-white/40 text-xs">A</span>
-                <input 
-                  type="range" 
-                  min="12" max="24" 
-                  value={fontSize} 
-                  onChange={(e) => setFontSize(parseInt(e.target.value))}
-                  className="w-16 accent-[#a088ff]"
-                />
-                <span className="text-white/40 text-xs text-xl">A</span>
-              </div>
-              <button 
+              <button
                 onClick={() => setTheme(theme === 'vs-dark' ? 'light' : 'vs-dark')}
                 className="text-white/60 hover:text-white"
                 title="Toggle Theme"
@@ -227,7 +241,7 @@ export function ProblemWorkspace({ problemId, onBack }: ProblemWorkspaceProps) {
               </button>
             </div>
           </div>
-          
+
           {/* Editor Area */}
           <div className="flex-1 min-h-0 bg-[#1e1e1e]">
             <Editor
@@ -237,7 +251,7 @@ export function ProblemWorkspace({ problemId, onBack }: ProblemWorkspaceProps) {
               value={code}
               onChange={handleEditorChange}
               options={{
-                fontSize: fontSize,
+                fontSize: 14,
                 minimap: { enabled: false },
                 scrollBeyondLastLine: false,
                 smoothScrolling: true,
