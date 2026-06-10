@@ -19,7 +19,16 @@ import { toast } from 'sonner';
 interface DailyChallengesProps {
     onBack: () => void;
 }
+const hashString = (str: string): number => {
+    let hash = 2166136261;
 
+    for (let i = 0; i < str.length; i++) {
+        hash ^= str.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+    }
+
+    return hash >>> 0;
+};
 export function DailyChallenges({ onBack }: DailyChallengesProps) {
     const { refreshProfile } = useAuth();
     const [allProblems, setAllProblems] = useState<any[]>([]);
@@ -61,22 +70,27 @@ export function DailyChallenges({ onBack }: DailyChallengesProps) {
         const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
 
         // Simple seeded shuffle to pick 3 problems deterministically per day
-        const shuffled = [...allProblems].sort((a, b) => {
-            const hashA = ((seed * 31 + a.id.charCodeAt(0)) * 37) % 1000;
-            const hashB = ((seed * 31 + b.id.charCodeAt(0)) * 37) % 1000;
-            return hashA - hashB;
-        });
+     const shuffled = [...allProblems]
+    .map(problem => ({
+        problem,
+        hash: hashString(`${seed}-${problem.id}`)
+    }))
+    .sort((a, b) => a.hash - b.hash)
+    .map(item => item.problem);
 
         // Try to get 1 Easy, 1 Medium, 1 Hard
         const easy = shuffled.find(p => p.difficulty === 'Easy');
         const medium = shuffled.find(p => p.difficulty === 'Medium');
         const hard = shuffled.find(p => p.difficulty === 'Hard');
+        
+
 
         const selected = [easy, medium, hard].filter(Boolean);
         // Fallback: if we don't have all 3 difficulties, just take first 3
         if (selected.length < 3) {
             return shuffled.slice(0, 3);
         }
+     
         return selected;
     }, [allProblems]);
 
