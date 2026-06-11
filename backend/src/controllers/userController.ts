@@ -149,46 +149,43 @@ export const getUserProfile = async (req: Request, res: Response) => {
     }
 };
 
-// @desc    Update own profile (bio, avatarUrl)
+// @desc    Update user profile (bio, avatar)
 // @route   PUT /api/users/:userId/profile
-// @access  Private (own profile only)
+// @access  Private (owner only)
 export const updateUserProfile = async (req: Request | any, res: Response) => {
     try {
-        const { userId } = req.params;
-        const requestingUserId = req.user?.id;
-
-        if (requestingUserId !== userId) {
-            return res.status(403).json({ message: 'Not authorized to edit this profile' });
-        }
-
+        const userId = req.params.userId;
         const { bio, avatarUrl } = req.body;
 
-        const updated = await prisma.user.update({
+        // Check if user exists and is the same as authenticated user
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        if (req.user.id !== userId) {
+            return res.status(403).json({ message: 'You can only edit your own profile' });
+        }
+
+        // Update user
+        const updatedUser = await prisma.user.update({
             where: { id: userId },
             data: {
-                ...(bio !== undefined && { bio }),
-                ...(avatarUrl !== undefined && { avatarUrl }),
+                bio: bio !== undefined ? bio : user.bio,
+                avatar: avatarUrl !== undefined ? avatarUrl : user.avatar,
             },
-            select: {
-                id: true,
-                name: true,
-                avatar: true,
-                avatarUrl: true,
-                bio: true,
-                xp_points: true,
-                streak_days: true,
-                solvedProblems: true,
-            }
         });
 
+        // Return same shape as GET /:userId/profile
         res.status(200).json({
-            id: updated.id,
-            name: updated.name,
-            avatar: updated.avatarUrl || updated.avatar || null,
-            bio: updated.bio || '',
-            xp: updated.xp_points || 0,
-            streak: updated.streak_days || 0,
-            solved: updated.solvedProblems?.length || 0,
+            id: updatedUser.id,
+            name: updatedUser.name,
+            avatar: updatedUser.avatar,
+            bio: updatedUser.bio || '',
+            xp: updatedUser.xp_points,
+            streak: updatedUser.streak_days,
+            solved: updatedUser.solvedProblems?.length || 0,
+            memberSince: updatedUser.createdAt,
         });
     } catch (error) {
         console.error(error);
