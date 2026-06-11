@@ -108,3 +108,90 @@ export const getDashboardStats = async (req: Request | any, res: Response) => {
         res.status(500).json({ message: 'Server Error' });
     }
 };
+// @desc    Get public profile for a user
+// @route   GET /api/users/:userId/profile
+// @access  Public
+export const getUserProfile = async (req: Request, res: Response) => {
+    try {
+        const { userId } = req.params;
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                id: true,
+                name: true,
+                avatar: true,
+                avatarUrl: true,
+                bio: true,
+                xp_points: true,
+                streak_days: true,
+                solvedProblems: true,
+                createdAt: true,
+            }
+        });
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.status(200).json({
+            id: user.id,
+            name: user.name,
+            avatar: user.avatarUrl || user.avatar || null,
+            bio: user.bio || '',
+            xp: user.xp_points || 0,
+            streak: user.streak_days || 0,
+            solved: user.solvedProblems?.length || 0,
+            memberSince: user.createdAt,
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Update own profile (bio, avatarUrl)
+// @route   PUT /api/users/:userId/profile
+// @access  Private (own profile only)
+export const updateUserProfile = async (req: Request | any, res: Response) => {
+    try {
+        const { userId } = req.params;
+        const requestingUserId = req.user?.id;
+
+        if (requestingUserId !== userId) {
+            return res.status(403).json({ message: 'Not authorized to edit this profile' });
+        }
+
+        const { bio, avatarUrl } = req.body;
+
+        const updated = await prisma.user.update({
+            where: { id: userId },
+            data: {
+                ...(bio !== undefined && { bio }),
+                ...(avatarUrl !== undefined && { avatarUrl }),
+            },
+            select: {
+                id: true,
+                name: true,
+                avatar: true,
+                avatarUrl: true,
+                bio: true,
+                xp_points: true,
+                streak_days: true,
+                solvedProblems: true,
+            }
+        });
+
+        res.status(200).json({
+            id: updated.id,
+            name: updated.name,
+            avatar: updated.avatarUrl || updated.avatar || null,
+            bio: updated.bio || '',
+            xp: updated.xp_points || 0,
+            streak: updated.streak_days || 0,
+            solved: updated.solvedProblems?.length || 0,
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
