@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 
-// User type matching backend response
 interface User {
   id: string;
   email: string;
@@ -21,14 +20,13 @@ interface AuthContextType {
   signUp: (email: string, password: string, name: string) => Promise<{ error: any }>;
   signInWithGoogle: (credential?: string) => Promise<{ error: any; isNewUser?: boolean }>;
   signOut: () => Promise<void>;
-  updateProfile: (updates: any) => Promise<{ error: any }>;
+  updateProfile: (updates: Record<string, unknown>) => Promise<{ error: any }>;
   refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
-
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -92,7 +90,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string, password: string) => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/users/login`, {
-
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -128,8 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string, name: string) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/users`, {
-
+      const res = await fetch(`${API_BASE_URL}/api/users`, {        
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password })
@@ -166,7 +162,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithGoogle = async (credential?: string) => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/users/google`, {
-
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -180,7 +175,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error: data.message || 'Google Auth failed' };
       }
 
-      // Success
       localStorage.setItem('token', data.token);
 
       const userObj = {
@@ -210,10 +204,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateProfile = async (updates: Record<string, unknown>) => {
-    if (!profile) return { error: new Error('Not authenticated') };
-    // This assumes specific update logic will be added to backend later
-    setProfile({ ...profile, ...updates });
-    return { error: null };
+    if (!profile) return { error: 'Not authenticated' };
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        return { error: 'Not authenticated' };
+      }
+      const res = await fetch(`${API_BASE_URL}/api/users/me`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(updates)
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        return { error: data.message || 'Failed to update profile' };
+      }
+
+      setProfile((prev: any) => ({ ...prev, ...data }));
+      
+      if (user) {
+        setUser((prevUser) => {
+          if (!prevUser) return null;
+          return {
+            ...prevUser,
+            name: data.name !== undefined ? data.name : prevUser.name,
+            avatar: data.avatar !== undefined ? data.avatar : prevUser.avatar
+          };
+        });
+      }
+
+      return { error: null };
+    } catch (err) {
+      return { error: 'Network error. Ensure backend is running.' };
+    }
   };
 
   return (
