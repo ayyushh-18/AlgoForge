@@ -325,7 +325,7 @@ export function DailyChallenges({ onBack }: DailyChallengesProps) {
                     className="flex items-center justify-center gap-2 mt-8 text-white/30 text-sm"
                 >
                     <RefreshCw className="w-4 h-4" />
-                    <span>Challenges refresh daily at midnight</span>
+                    <span>Challenges refresh daily at 00:00 UTC</span>
                 </motion.div>
             </div>
         </section>
