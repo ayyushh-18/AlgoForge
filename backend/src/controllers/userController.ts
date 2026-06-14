@@ -158,8 +158,8 @@ export const updateUserProfile = async (req: Request | any, res: Response) => {
         const userId = req.params.userId;
         const { bio, avatarUrl } = req.body;
 
-        // Check if user exists and is the same as authenticated user
         const user = await prisma.user.findUnique({ where: { id: userId } });
+
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
@@ -168,20 +168,18 @@ export const updateUserProfile = async (req: Request | any, res: Response) => {
             return res.status(403).json({ message: 'You can only edit your own profile' });
         }
 
-        // Update user
         const updatedUser = await prisma.user.update({
             where: { id: userId },
             data: {
                 bio: bio !== undefined ? bio : user.bio,
-                avatar: avatarUrl !== undefined ? avatarUrl : user.avatar,
+                avatarUrl: avatarUrl !== undefined ? avatarUrl : user.avatarUrl,
             },
         });
 
-        // Return same shape as GET /:userId/profile
         res.status(200).json({
             id: updatedUser.id,
             name: updatedUser.name,
-            avatar: updatedUser.avatar,
+            avatar: updatedUser.avatarUrl || updatedUser.avatar || null,
             bio: updatedUser.bio || '',
             xp: updatedUser.xp_points,
             streak: updatedUser.streak_days,
