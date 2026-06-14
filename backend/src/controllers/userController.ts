@@ -150,9 +150,7 @@ export const getUserProfile = async (req: Request, res: Response) => {
     }
 };
 
-// @desc    Update user profile (bio, avatar)
-// @route   PUT /api/users/:userId/profile
-// @access  Private (owner only)
+
 export const updateUserProfile = async (req: Request | any, res: Response) => {
     try {
         const userId = req.params.userId;

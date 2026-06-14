@@ -1,4 +1,4 @@
-import { rateLimit } from 'express-rate-limit';
+import { rateLimit, ipKeyGenerator } from 'express-rate-limit';
 import { Request, Response } from 'express';
 
 /**
@@ -15,16 +15,8 @@ export const executionRateLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
 
-    /**
-     * Generates a unique key per requester.
-     * Uses the authenticated user's ID when available, otherwise falls back to
-     * the client IP address so that unauthenticated callers are still throttled.
-     *
-     * @param req - The incoming Express request.
-     * @returns A string key identifying the requester.
-     */
-    keyGenerator: (req: Request) => {
-        return req.user?.id || req.ip;
+    keyGenerator: (req: Request, res: Response) => {
+        return req.user?.id || ipKeyGenerator(req as any, res as any);
     },
 
     /**
