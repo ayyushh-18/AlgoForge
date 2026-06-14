@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Zap, Flame, Target, Edit2, Check, X, ArrowLeft, User } from 'lucide-react';
+import { Zap, Flame, Target, Edit2, Check, X, ArrowLeft, User, Award } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
@@ -13,6 +13,7 @@ interface ProfileData {
   xp: number;
   streak: number;
   solved: number;
+  level: number;
   memberSince: string;
 }
 
@@ -227,6 +228,7 @@ export function ProfileView({ userId, onBack }: ProfileViewProps) {
             { icon: Zap, label: 'XP Points', value: profile.xp.toLocaleString(), color: '#a088ff' },
             { icon: Flame, label: 'Day Streak', value: profile.streak, color: '#ff8a63' },
             { icon: Target, label: 'Problems Solved', value: profile.solved, color: '#63e3ff' },
+            { icon: Award, label: 'Level', value: profile.level, color: '#f59e0b' },
           ].map((stat) => (
             <div key={stat.label} className="glass rounded-xl p-4 text-center">
               <stat.icon className="w-6 h-6 mx-auto mb-2" style={{ color: stat.color }} />

@@ -141,6 +141,7 @@ export const getUserProfile = async (req: Request, res: Response) => {
             xp: user.xp_points || 0,
             streak: user.streak_days || 0,
             solved: user.solvedProblems?.length || 0,
+            level: Math.floor((user.xp_points || 0) / 100) + 1,
             memberSince: user.createdAt,
         });
     } catch (error) {
@@ -185,6 +186,7 @@ export const updateUserProfile = async (req: Request | any, res: Response) => {
             xp: updatedUser.xp_points,
             streak: updatedUser.streak_days,
             solved: updatedUser.solvedProblems?.length || 0,
+            level: Math.floor((updatedUser.xp_points || 0) / 100) + 1,
             memberSince: updatedUser.createdAt,
         });
     } catch (error) {
