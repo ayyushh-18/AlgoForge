@@ -351,7 +351,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         >
           {[
             { label: 'Problems Solved', value: animSolved, sub: `of ${stats.totalProblems}`, icon: CheckCircle2, color: '#a088ff', glow: 'rgba(160,136,255,0.15)' },
-            { label: 'XP Points', value: animXP, sub: `Level ${level}`, icon: Zap, color: '#ffd700', glow: 'rgba(255,215,0,0.12)', title: `Earn ${SOLVE_XP} XP per solved problem. Every ${XP_PER_LEVEL.toLocaleString()} XP = 1 Level.` },
+            { label: 'XP Points', value: animXP, sub: `Level ${level}`, icon: Zap, color: '#ffd700', glow: 'rgba(255,215,0,0.12)', tooltip: `Earn ${SOLVE_XP} XP per solved problem. Every ${XP_PER_LEVEL.toLocaleString()} XP = 1 Level.` },
             { label: 'Day Streak', value: animStreak, sub: stats.currentStreak > 0 ? 'Keep it up!' : 'Solve to start!', icon: Flame, color: '#ff8a63', glow: 'rgba(255,138,99,0.12)' },
             { label: 'Global Rank', value: `#${rankInfo.rank}`, sub: `Top ${rankInfo.topPercent}%`, icon: Trophy, color: '#88ff9f', glow: 'rgba(136,255,159,0.12)' },
           ].map((stat) => (
@@ -360,8 +360,19 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               whileHover={{ scale: 1.03, y: -4 }}
               transition={{ type: 'spring', stiffness: 400, damping: 25 }}
               className="relative glass rounded-2xl p-5 overflow-hidden group cursor-default"
-              title={stat.title}
+              role="status"
+              aria-label={`${stat.label}: ${stat.value}`}
             >
+              {stat.tooltip && (
+                <div className="absolute top-2 right-2 z-20">
+                  <div className="relative group/tooltip">
+                    <div className="w-4 h-4 rounded-full bg-white/10 flex items-center justify-center text-[10px] text-white/40 cursor-help">?</div>
+                    <div className="absolute bottom-full right-0 mb-2 w-48 p-2 rounded-lg bg-[#1e1e2d] border border-white/10 text-xs text-white/70 opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none z-30">
+                      {stat.tooltip}
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="flex items-center gap-3 mb-3">
                 <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110"
