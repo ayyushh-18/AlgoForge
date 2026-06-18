@@ -329,7 +329,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                 whileTap={{ scale: 0.95 }}
                 onClick={handleRefresh}
                 disabled={isRefreshing || cooldownSeconds > 0}
-                className={`flex items-center gap-2 px-3 py-2 rounded-full glass text-sm font-medium transition-colors ${
+                aria-label={cooldownSeconds > 0 ? `Refresh available in ${cooldownSeconds} seconds` : 'Refresh dashboard stats'}
+                className={`flex items-center gap-2 px-3 py-2 rounded-full glass text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a088ff] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0f0f16] ${
                   isRefreshing || cooldownSeconds > 0
                     ? 'text-white/30 cursor-not-allowed'
                     : 'text-white/70 hover:text-white cursor-pointer'
@@ -337,7 +338,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                 title={cooldownSeconds > 0 ? `Refresh available in ${cooldownSeconds}s` : 'Refresh stats'}
               >
                 <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                {cooldownSeconds > 0 ? `${cooldownSeconds}s` : 'Refresh'}
+                <span aria-live="polite">{cooldownSeconds > 0 ? `${cooldownSeconds}s` : 'Refresh'}</span>
               </motion.button>
               <motion.div
                 whileHover={{ scale: 1.05 }}
@@ -387,7 +388,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               whileHover={{ scale: 1.03, y: -2 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => onNavigate(action.view)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.07] hover:border-white/20 transition-all group"
+              aria-label={`Navigate to ${action.label}`}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.07] hover:border-white/20 transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a088ff] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0f0f16]"
             >
               <action.icon className="w-4 h-4 transition-colors" style={{ color: action.color }} />
               <span className="text-sm text-white/70 group-hover:text-white transition-colors">{action.label}</span>
@@ -756,7 +758,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                       whileHover={{ scale: 1.06, y: -3 }}
                       whileTap={{ scale: 0.97 }}
                       onClick={() => onNavigate('topic', topic.id)}
-                      className="relative p-4 rounded-xl text-left overflow-hidden transition-all border border-white/5 hover:border-white/15 group"
+                      aria-label={`${topic.title}: ${topic.progress}% complete, ${topic.solvedInTopic} of ${topic.totalInTopic} problems solved`}
+                      className="relative p-4 rounded-xl text-left overflow-hidden transition-all border border-white/5 hover:border-white/15 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a088ff] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0f0f16]"
                       style={{
                         background: `linear-gradient(135deg, rgba(160,136,255,${0.05 + intensity * 0.2}) 0%, rgba(99,227,255,${0.02 + intensity * 0.1}) 100%)`
                       }}
@@ -906,7 +909,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                     key={topic.id}
                     whileHover={{ x: 4 }}
                     onClick={() => onNavigate('topic', topic.id)}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] transition-all text-left group border border-transparent hover:border-white/10"
+                    aria-label={`Continue learning ${topic.title}: ${topic.progress}% complete`}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] transition-all text-left group border border-transparent hover:border-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a088ff] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0f0f16]"
                   >
                     <div
                       className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -954,7 +958,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => onNavigate('daily-challenges')}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-[#ff8a63] to-[#ff6347] text-white font-semibold hover:shadow-lg hover:shadow-[#ff8a63]/20 transition-all"
+                  aria-label="Start today's daily challenge"
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-[#ff8a63] to-[#ff6347] text-white font-semibold hover:shadow-lg hover:shadow-[#ff8a63]/20 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff8a63] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0f0f16]"
                 >
                   Start Challenge →
                 </motion.button>
