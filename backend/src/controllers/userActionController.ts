@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/db';
+import { SOLVE_XP } from '../config/xpConfig';
 
 export const updateProblemStatus = async (req: Request | any, res: Response) => {
     try {
@@ -64,7 +65,7 @@ export const updateProblemStatus = async (req: Request | any, res: Response) => 
                 await prisma.user.update({
                     where: { id: userId },
                     data: {
-                        xp_points: { increment: 25 },
+                        xp_points: { increment: SOLVE_XP },
                         solvedProblems: { push: [{ problemId, solvedAt: today }] },
                         streak_days: newStreak,
                         last_active: today,
@@ -79,7 +80,7 @@ export const updateProblemStatus = async (req: Request | any, res: Response) => 
                 await prisma.user.update({
                     where: { id: userId },
                     data: {
-                        xp_points: { decrement: 25 },
+                        xp_points: { decrement: SOLVE_XP },
                         solvedProblems: updatedSolvedProblems
                     }
                 });
