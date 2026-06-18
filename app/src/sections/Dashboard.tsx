@@ -288,6 +288,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 className="flex items-center gap-2 px-4 py-2 rounded-full glass cursor-default"
+                title="Streak resets at midnight UTC"
               >
                 <Flame className={`w-5 h-5 ${stats.currentStreak > 0 ? 'text-[#ff8a63]' : 'text-white/30'}`} />
                 <span className="text-white font-medium">{animStreak} day streak</span>
@@ -351,7 +352,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           {[
             { label: 'Problems Solved', value: animSolved, sub: `of ${stats.totalProblems}`, icon: CheckCircle2, color: '#a088ff', glow: 'rgba(160,136,255,0.15)' },
             { label: 'XP Points', value: animXP, sub: `Level ${level}`, icon: Zap, color: '#ffd700', glow: 'rgba(255,215,0,0.12)' },
-            { label: 'Day Streak', value: animStreak, sub: stats.currentStreak > 0 ? 'Keep it up!' : 'Solve to start!', icon: Flame, color: '#ff8a63', glow: 'rgba(255,138,99,0.12)' },
+            { label: 'Day Streak', value: animStreak, sub: 'Resets at midnight UTC', icon: Flame, color: '#ff8a63', glow: 'rgba(255,138,99,0.12)' },
             { label: 'Global Rank', value: `#${rankInfo.rank}`, sub: `Top ${rankInfo.topPercent}%`, icon: Trophy, color: '#88ff9f', glow: 'rgba(136,255,159,0.12)' },
           ].map((stat) => (
             <motion.div
