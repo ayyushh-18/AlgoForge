@@ -17,7 +17,8 @@ import {
   BarChart3,
   Swords,
   Crown,
-  Footprints
+  Footprints,
+  RefreshCw
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAllProblems, getAllTopics } from '@/api/content';
@@ -65,10 +66,45 @@ function timeAgo(dateStr: string): string {
 }
 
 export function Dashboard({ onNavigate }: DashboardProps) {
-  const { profile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
   
   const [hoveredDay, setHoveredDay] = useState<number | null>(null);
   const [hoveredDonut, setHoveredDonut] = useState<string | null>(null);
+
+  // ── Refresh button state ──
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const cooldownRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleRefresh = async () => {
+    if (isRefreshing || cooldownSeconds > 0) return;
+    setIsRefreshing(true);
+    try {
+      await refreshProfile();
+      // Refetch React Query caches
+      setLastUpdated(new Date());
+    } finally {
+      setIsRefreshing(false);
+      setCooldownSeconds(10);
+      // Start 10-second cooldown
+      const tick = () => {
+        setCooldownSeconds((prev) => {
+          if (prev <= 1) return 0;
+          cooldownRef.current = setTimeout(tick, 1000);
+          return prev - 1;
+        });
+      };
+      cooldownRef.current = setTimeout(tick, 1000);
+    }
+  };
+
+  // Cleanup cooldown timer on unmount
+  useEffect(() => {
+    return () => {
+      if (cooldownRef.current) clearTimeout(cooldownRef.current);
+    };
+  }, []);
 
   const { data: problemsData = [], isLoading: problemsLoading } = useQuery({
     queryKey: ['problems'],
@@ -285,6 +321,24 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               </p>
             </div>
             <div className="flex items-center gap-3">
+              <span className="text-white/30 text-xs hidden sm:inline">
+                Updated {Math.floor((Date.now() - lastUpdated.getTime()) / 1000)}s ago
+              </span>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleRefresh}
+                disabled={isRefreshing || cooldownSeconds > 0}
+                className={`flex items-center gap-2 px-3 py-2 rounded-full glass text-sm font-medium transition-colors ${
+                  isRefreshing || cooldownSeconds > 0
+                    ? 'text-white/30 cursor-not-allowed'
+                    : 'text-white/70 hover:text-white cursor-pointer'
+                }`}
+                title={cooldownSeconds > 0 ? `Refresh available in ${cooldownSeconds}s` : 'Refresh stats'}
+              >
+                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                {cooldownSeconds > 0 ? `${cooldownSeconds}s` : 'Refresh'}
+              </motion.button>
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 className="flex items-center gap-2 px-4 py-2 rounded-full glass cursor-default"
@@ -360,6 +414,11 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               transition={{ type: 'spring', stiffness: 400, damping: 25 }}
               className="relative glass rounded-2xl p-5 overflow-hidden group cursor-default"
             >
+              {isRefreshing && (
+                <div className="absolute inset-0 bg-white/5 backdrop-blur-sm flex items-center justify-center z-10 rounded-2xl">
+                  <RefreshCw className="w-5 h-5 text-white/50 animate-spin" />
+                </div>
+              )}
               <div className="flex items-center gap-3 mb-3">
                 <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110"
