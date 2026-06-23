@@ -6,10 +6,6 @@ import { defineConfig } from "vite"
 export default defineConfig(({ mode }) => ({
   base: '/',
   plugins: [
-    // Only load the inspect plugin in development — it adds overhead in production
-    ...(mode === 'development'
-      ? [require('kimi-plugin-inspect-react').inspectAttr()]
-      : []),
     react(),
   ],
   resolve: {
