@@ -23,6 +23,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { getAllProblems, getAllTopics } from '@/api/content';
 import { getUserProgress, getDashboardStats } from '@/api/userActions';
+import { SOLVE_XP, XP_PER_LEVEL, calculateLevel } from '@/utils/xpConfig';
 
 interface DashboardProps {
   onNavigate: (view: 'home' | 'dashboard' | 'topic' | 'problems' | 'notes' | 'leaderboard' | 'daily-challenges', topicId?: string) => void;
@@ -140,7 +141,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
     const totalSolved = solvedIds.size;
     const totalProblems = problems.length;
-    const xpPoints = profile?.xp_points ?? totalSolved * 25;
+    const xpPoints = profile?.xp_points ?? totalSolved * SOLVE_XP;
 
     let easy = 0, medium = 0, hard = 0;
     let easyTotal = 0, mediumTotal = 0, hardTotal = 0;
@@ -281,7 +282,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
   }
 
-  const level = Math.floor((stats.xpPoints) / 1000) + 1;
+  const level = calculateLevel(stats.xpPoints);
 
   if (loading) {
     return (
@@ -407,6 +408,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         >
           {[
             { label: 'Problems Solved', value: animSolved, sub: `of ${stats.totalProblems}`, icon: CheckCircle2, color: '#a088ff', glow: 'rgba(160,136,255,0.15)' },
+            { label: 'XP Points', value: animXP, sub: `Level ${level}`, icon: Zap, color: '#ffd700', glow: 'rgba(255,215,0,0.12)', tooltip: `Earn ${SOLVE_XP} XP per solved problem. Every ${XP_PER_LEVEL.toLocaleString()} XP = 1 Level.` },
+            { label: 'Day Streak', value: animStreak, sub: stats.currentStreak > 0 ? 'Keep it up!' : 'Solve to start!', icon: Flame, color: '#ff8a63', glow: 'rgba(255,138,99,0.12)' },
             { label: 'XP Points', value: animXP, sub: `Level ${level}`, icon: Zap, color: '#ffd700', glow: 'rgba(255,215,0,0.12)' },
             { label: 'Day Streak', value: animStreak, sub: 'Resets at midnight UTC', icon: Flame, color: '#ff8a63', glow: 'rgba(255,138,99,0.12)' },
             { label: 'Global Rank', value: `#${rankInfo.rank}`, sub: `Top ${rankInfo.topPercent}%`, icon: Trophy, color: '#88ff9f', glow: 'rgba(136,255,159,0.12)' },
@@ -416,7 +419,17 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               whileHover={{ scale: 1.03, y: -4 }}
               transition={{ type: 'spring', stiffness: 400, damping: 25 }}
               className="relative glass rounded-2xl p-5 overflow-hidden group cursor-default"
+              role="status"
+              aria-label={`${stat.label}: ${stat.value}`}
             >
+              {stat.tooltip && (
+                <div className="absolute top-2 right-2 z-20">
+                  <div className="relative group/tooltip">
+                    <div className="w-4 h-4 rounded-full bg-white/10 flex items-center justify-center text-[10px] text-white/40 cursor-help">?</div>
+                    <div className="absolute bottom-full right-0 mb-2 w-48 p-2 rounded-lg bg-[#1e1e2d] border border-white/10 text-xs text-white/70 opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none z-30">
+                      {stat.tooltip}
+                    </div>
+                  </div>
               {isRefreshing && (
                 <div className="absolute inset-0 bg-white/5 backdrop-blur-sm flex items-center justify-center z-10 rounded-2xl">
                   <RefreshCw className="w-5 h-5 text-white/50 animate-spin" />
@@ -831,7 +844,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                           </div>
                         </div>
                       </div>
-                      <span className="text-xs font-medium text-[#88ff9f]/70">+25 XP</span>
+                      <span className="text-xs font-medium text-[#88ff9f]/70">+{SOLVE_XP} XP</span>
                     </motion.div>
                   );
                 }) : (

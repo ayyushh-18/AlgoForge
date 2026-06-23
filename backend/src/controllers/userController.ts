@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/db';
+import { calculateLevel } from '../config/xpConfig';
 
 // @desc    Get leaderboard data
 // @route   GET /api/users/leaderboard
@@ -148,7 +149,7 @@ export const getUserProfile = async (req: Request, res: Response) => {
             xp: user.xp_points || 0,
             streak: user.streak_days || 0,
             solved: user.solvedProblems?.length || 0,
-            level: Math.floor((user.xp_points || 0) / 100) + 1,
+            level: calculateLevel(user.xp_points || 0),
             memberSince: user.createdAt,
         });
     } catch (error) {
@@ -189,7 +190,7 @@ export const updateUserProfile = async (req: Request | any, res: Response) => {
             xp: updatedUser.xp_points,
             streak: updatedUser.streak_days,
             solved: updatedUser.solvedProblems?.length || 0,
-            level: Math.floor((updatedUser.xp_points || 0) / 100) + 1,
+            level: calculateLevel(updatedUser.xp_points || 0),
             memberSince: updatedUser.createdAt,
         });
     } catch (error) {
