@@ -3,13 +3,9 @@ import react from "@vitejs/plugin-react"
 import { defineConfig } from "vite"
 
 // https://vite.dev/config/
-export default defineConfig(({ mode }) => ({
+export default defineConfig(() => ({
   base: '/',
   plugins: [
-    // Only load the inspect plugin in development — it adds overhead in production
-    ...(mode === 'development'
-      ? [require('kimi-plugin-inspect-react').inspectAttr()]
-      : []),
     react(),
   ],
   resolve: {

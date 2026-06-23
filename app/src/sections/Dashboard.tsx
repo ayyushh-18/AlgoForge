@@ -430,6 +430,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                       {stat.tooltip}
                     </div>
                   </div>
+                </div>
+              )}
               {isRefreshing && (
                 <div className="absolute inset-0 bg-white/5 backdrop-blur-sm flex items-center justify-center z-10 rounded-2xl">
                   <RefreshCw className="w-5 h-5 text-white/50 animate-spin" />
