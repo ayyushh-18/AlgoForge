@@ -69,6 +69,13 @@ export const getDashboardStats = async (req: Request | any, res: Response) => {
         const totalUsers = await prisma.user.count();
         const topPercent = totalUsers > 0 ? Math.round((rank / totalUsers) * 100) : 100;
 
+        // ─────────────────────────────────────────────
+        // UTC-based streak validation for dashboard display
+        // ─────────────────────────────────────────────
+        // Reset streak to 0 if last_active is not today or yesterday (UTC).
+        // This handles cases where the user missed a UTC day.
+        // All date comparisons use UTC via toISOString().split('T')[0].
+        // ─────────────────────────────────────────────
         let currentStreak = user.streak_days || 0;
         const today = new Date();
         const todayStr = today.toISOString().split('T')[0];
