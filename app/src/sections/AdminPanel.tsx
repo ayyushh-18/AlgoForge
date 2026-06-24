@@ -243,6 +243,7 @@ function UsersTab() {
     };
 
     const handleSaveEdit = async () => {
+        if (!editingUser) return;
         try {
             await adminApi.editUser(editingUser.id, editForm);
             setEditingUser(null);
@@ -432,6 +433,7 @@ function ContentTab() {
     };
 
     const handleEditSave = async () => {
+        if (!editingProblem) return;
         try {
             await adminApi.editProblem(editingProblem.id, {
                 title: form.title,
@@ -640,6 +642,7 @@ function ForumTab() {
     };
 
     const handleSaveEdit = async () => {
+        if (!editingPost) return;
         try {
             await adminApi.editForumPost(editingPost.id, editForm);
             setEditingPost(null);

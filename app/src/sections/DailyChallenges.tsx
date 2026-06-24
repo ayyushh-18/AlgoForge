@@ -132,7 +132,7 @@ export function DailyChallenges({ onBack }: DailyChallengesProps) {
         
 
 
-        const selected = [easy, medium, hard].filter(Boolean);
+        const selected = [easy, medium, hard].filter((p): p is DailyProblem => p !== undefined);
         // Fallback: if we don't have all 3 difficulties, just take first 3
         if (selected.length < 3) {
             return shuffled.slice(0, 3);
