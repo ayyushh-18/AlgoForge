@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     ArrowLeft,
@@ -101,11 +101,7 @@ export function CommunityForum({ onBack, onAuthClick }: CommunityForumProps) {
     const [createSubmitting, setCreateSubmitting] = useState(false);
 
     // Fetch posts
-    useEffect(() => {
-        fetchPosts();
-    }, [activeCategory, activeSort, currentPage]);
-
-    const fetchPosts = async () => {
+    const fetchPosts = useCallback(async () => {
         setLoading(true);
         try {
             const data = await getPosts(activeCategory, activeSort, currentPage);
@@ -116,7 +112,11 @@ export function CommunityForum({ onBack, onAuthClick }: CommunityForumProps) {
         } finally {
             setLoading(false);
         }
-    };
+    }, [activeCategory, activeSort, currentPage]);
+
+    useEffect(() => {
+        fetchPosts();
+    }, [fetchPosts]);
 
     const handleOpenPost = async (postId: string) => {
         setDetailLoading(true);

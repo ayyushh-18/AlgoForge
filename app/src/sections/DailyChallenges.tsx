@@ -20,6 +20,20 @@ import { SOLVE_XP } from '@/utils/xpConfig';
 interface DailyChallengesProps {
     onBack: () => void;
 }
+
+interface DailyProblem {
+    id: string;
+    title: string;
+    difficulty: string;
+    video_link?: string;
+    problem_link?: string;
+    tags?: string[];
+}
+
+interface DailyProgressItem {
+    status: string;
+    problem_id: string;
+}
 /**
  * Generates a deterministic FNV-1a hash from a string.
  * Used to create a stable daily ordering of problems
@@ -38,7 +52,7 @@ const hashString = (str: string): number => {
 };
 export function DailyChallenges({ onBack }: DailyChallengesProps) {
     const { refreshProfile } = useAuth();
-    const [allProblems, setAllProblems] = useState<any[]>([]);
+    const [allProblems, setAllProblems] = useState<DailyProblem[]>([]);
     const [completedProblems, setCompletedProblems] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true);
     const [dayKey, setDayKey] = useState(
@@ -55,7 +69,7 @@ export function DailyChallenges({ onBack }: DailyChallengesProps) {
                 try {
                     const progressData = await getUserProgress();
                     const completed = new Set<string>();
-                    progressData.forEach((p: any) => {
+                    progressData.forEach((p: DailyProgressItem) => {
                         if (p.status === 'SOLVED') completed.add(p.problem_id);
                     });
                     setCompletedProblems(completed);
